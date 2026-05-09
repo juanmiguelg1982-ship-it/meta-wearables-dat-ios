@@ -4,6 +4,9 @@ workflows:
     instance_type: mac_mini_m2
     environment:
       xcode: latest
+      ios_signing:
+        distribution_type: development
+        bundle_identifier: com.juanmi.cameraaccess
     scripts:
       - name: Build CameraAccess
         script: |
@@ -13,6 +16,13 @@ workflows:
             -destination generic/platform=iOS \
             -archivePath build/CameraAccess.xcarchive \
             archive \
-            CODE_SIGNING_ALLOWED=NO
+            DEVELOPMENT_TEAM=L9M5LHV7CF \
+            CODE_SIGN_STYLE=Automatic
+      - name: Export IPA
+        script: |
+          xcodebuild -exportArchive \
+            -archivePath samples/CameraAccess/build/CameraAccess.xcarchive \
+            -exportPath samples/CameraAccess/build/ipa \
+            -exportOptionsPlist /Users/builder/export_options.plist
     artifacts:
-      - samples/CameraAccess/build/*.xcarchive
+      - samples/CameraAccess/build/ipa/*.ipa
