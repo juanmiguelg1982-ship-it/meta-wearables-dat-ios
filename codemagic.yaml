@@ -8,6 +8,11 @@ workflows:
         distribution_type: development
         bundle_identifier: com.juanmi.bidglasses
     scripts:
+      - name: Fix entitlements
+        script: |
+          cd samples/CameraAccess
+          /usr/libexec/PlistBuddy -c "Delete :com.apple.developer.networking.wifi-info" CameraAccess/CameraAccess.entitlements 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Delete :com.apple.developer.networking.HotspotConfiguration" CameraAccess/CameraAccess.entitlements 2>/dev/null || true
       - name: Build CameraAccess
         script: |
           cd samples/CameraAccess
