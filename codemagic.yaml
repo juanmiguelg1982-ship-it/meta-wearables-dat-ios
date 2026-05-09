@@ -23,7 +23,7 @@ workflows:
             archive \
             DEVELOPMENT_TEAM=L9M5LHV7CF \
             CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Development: juan miguel goñi (JKP3HXA8PR)" \
+            CODE_SIGN_IDENTITY="Apple Development: Created via API (8MZ5SL5DVG)" \
             PROVISIONING_PROFILE_SPECIFIER="BID Glasses Development" \
             PRODUCT_BUNDLE_IDENTIFIER=com.juanmi.bidglasses
       - name: Export IPA
@@ -53,5 +53,4 @@ workflows:
             -exportOptionsPlist /tmp/export.plist
     artifacts:
       - samples/CameraAccess/build/ipa/**/*.ipa
-      - samples/CameraAccess/build/**/*.ipa
       - "**/*.ipa"
