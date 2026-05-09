@@ -13,7 +13,6 @@ workflows:
             -destination generic/platform=iOS \
             -archivePath build/CameraAccess.xcarchive \
             archive \
-            CODE_SIGN_IDENTITY="Apple Development" \
-            DEVELOPMENT_TEAM=L9M5LHV7CF
+            CODE_SIGNING_ALLOWED=NO
     artifacts:
       - samples/CameraAccess/build/*.xcarchive
