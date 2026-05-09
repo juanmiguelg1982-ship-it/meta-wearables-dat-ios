@@ -34,9 +34,16 @@ workflows:
           <plist version="1.0">
           <dict>
             <key>method</key>
-            <string>development</string>
+            <string>debugging</string>
             <key>teamID</key>
             <string>L9M5LHV7CF</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.juanmi.bidglasses</key>
+              <string>BID Glasses Development</string>
+            </dict>
           </dict>
           </plist>
           EOF
@@ -44,5 +51,3 @@ workflows:
             -archivePath samples/CameraAccess/build/CameraAccess.xcarchive \
             -exportPath samples/CameraAccess/build/ipa \
             -exportOptionsPlist /tmp/export.plist
-    artifacts:
-      - samples/CameraAccess/build/ipa/*.ipa
