@@ -1,0 +1,19 @@
+workflows:
+  camera-access:
+    name: CameraAccess Example
+    instance_type: mac_mini_m2
+    environment:
+      xcode: latest
+    scripts:
+      - name: Build CameraAccess
+        script: |
+          cd samples/CameraAccess
+          xcodebuild -project CameraAccess.xcodeproj \
+            -scheme CameraAccess \
+            -destination generic/platform=iOS \
+            -archivePath build/CameraAccess.xcarchive \
+            archive \
+            CODE_SIGN_IDENTITY="Apple Development" \
+            DEVELOPMENT_TEAM=L9M5LHV7CF
+    artifacts:
+      - samples/CameraAccess/build/*.xcarchive
