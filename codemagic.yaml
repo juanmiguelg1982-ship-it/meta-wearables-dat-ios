@@ -13,11 +13,6 @@ workflows:
           cd samples/CameraAccess
           /usr/libexec/PlistBuddy -c "Delete :com.apple.developer.networking.wifi-info" CameraAccess/CameraAccess.entitlements 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Delete :com.apple.developer.networking.HotspotConfiguration" CameraAccess/CameraAccess.entitlements 2>/dev/null || true
-      - name: Activar firma
-        script: |
-          keychain initialize
-          keychain add-certificates
-          xcode-project use-profiles
       - name: Build CameraAccess
         script: |
           cd samples/CameraAccess
@@ -28,33 +23,20 @@ workflows:
             archive \
             DEVELOPMENT_TEAM=L9M5LHV7CF \
             CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE_SPECIFIER="BID Glasses Development" \
+            CODE_SIGN_IDENTITY="Apple Development: Created via API (8MZ5SL5DVG)" \
+            PROVISIONING_PROFILE_SPECIFIER="BIDDev2" \
             PRODUCT_BUNDLE_IDENTIFIER=com.juanmi.bidglasses
       - name: Export IPA
         script: |
-          cat > /tmp/export.plist << EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>debugging</string>
-            <key>teamID</key>
-            <string>L9M5LHV7CF</string>
-            <key>signingStyle</key>
-            <string>manual</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>com.juanmi.bidglasses</key>
-              <string>BID Glasses Development</string>
-            </dict>
-          </dict>
-          </plist>
-          EOF
+          /usr/libexec/PlistBuddy -c "Add :method string debugging" /tmp/export.plist
+          /usr/libexec/PlistBuddy -c "Add :teamID string L9M5LHV7CF" /tmp/export.plist
+          /usr/libexec/PlistBuddy -c "Add :signingStyle string manual" /tmp/export.plist
+          /usr/libexec/PlistBuddy -c "Add :provisioningProfiles dict" /tmp/export.plist
+          /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:com.juanmi.bidglasses string a51c94a0-1008-4106-aff4-a272c4543559" /tmp/export.plist
           xcodebuild -exportArchive \
             -archivePath samples/CameraAccess/build/CameraAccess.xcarchive \
             -exportPath samples/CameraAccess/build/ipa \
             -exportOptionsPlist /tmp/export.plist
     artifacts:
-      - samples/CameraAccess/build/ipa/**/*.ipa
+      - samples/CameraAccess/build/ipa/*.ipa
       - "**/*.ipa"
