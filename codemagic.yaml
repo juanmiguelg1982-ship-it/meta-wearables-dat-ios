@@ -51,3 +51,7 @@ workflows:
             -archivePath samples/CameraAccess/build/CameraAccess.xcarchive \
             -exportPath samples/CameraAccess/build/ipa \
             -exportOptionsPlist /tmp/export.plist
+    artifacts:
+      - samples/CameraAccess/build/ipa/**/*.ipa
+      - samples/CameraAccess/build/**/*.ipa
+      - "**/*.ipa"
