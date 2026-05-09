@@ -13,6 +13,11 @@ workflows:
           cd samples/CameraAccess
           /usr/libexec/PlistBuddy -c "Delete :com.apple.developer.networking.wifi-info" CameraAccess/CameraAccess.entitlements 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Delete :com.apple.developer.networking.HotspotConfiguration" CameraAccess/CameraAccess.entitlements 2>/dev/null || true
+      - name: Activar firma
+        script: |
+          keychain initialize
+          keychain add-certificates
+          xcode-project use-profiles
       - name: Build CameraAccess
         script: |
           cd samples/CameraAccess
@@ -23,7 +28,6 @@ workflows:
             archive \
             DEVELOPMENT_TEAM=L9M5LHV7CF \
             CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Development: Created via API (8MZ5SL5DVG)" \
             PROVISIONING_PROFILE_SPECIFIER="BID Glasses Development" \
             PRODUCT_BUNDLE_IDENTIFIER=com.juanmi.bidglasses
       - name: Export IPA
