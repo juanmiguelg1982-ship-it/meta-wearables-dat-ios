@@ -19,6 +19,7 @@ workflows:
             DEVELOPMENT_TEAM=L9M5LHV7CF \
             CODE_SIGN_STYLE=Automatic \
             PROVISIONING_PROFILE_SPECIFIER="" \
-            PRODUCT_BUNDLE_IDENTIFIER=com.juanmi.bidglasses
+            PRODUCT_BUNDLE_IDENTIFIER=com.juanmi.bidglasses \
+            -allowProvisioningUpdates
     artifacts:
       - samples/CameraAccess/build/*.ipa
