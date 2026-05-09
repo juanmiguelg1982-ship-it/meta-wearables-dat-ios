@@ -175,29 +175,20 @@ final class StreamSessionViewModel: ObservableObject {
   }
 
   private func enviarFrameABid(image: UIImage) async {
-    guard let url = URL(string: "https://bidjuanmi.com/chat") else { return }
-    guard let imageData = image.jpegData(compressionQuality: 0.5) else { return }
+    guard var components = URLComponents(string: "https://bidjuanmi.com/chat-stream") else { return }
+    components.queryItems = [URLQueryItem(name: "message", value: "Qué ves en esta imagen de mis gafas?")]
+    guard let url = components.url else { return }
     var request = URLRequest(url: url)
-    request.httpMethod = "POST"
-    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    let body: [String: Any] = [
-      "message": "Qué ves en esta imagen?",
-      "image": imageData.base64EncodedString()
-    ]
-    request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+    request.httpMethod = "GET"
     _ = try? await URLSession.shared.data(for: request)
   }
 
   private func enviarFotoABid(data: Data) async {
-    guard let url = URL(string: "https://bidjuanmi.com/chat") else { return }
+    guard var components = URLComponents(string: "https://bidjuanmi.com/chat-stream") else { return }
+    components.queryItems = [URLQueryItem(name: "message", value: "Foto capturada desde mis gafas Ray-Ban Meta")]
+    guard let url = components.url else { return }
     var request = URLRequest(url: url)
-    request.httpMethod = "POST"
-    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    let body: [String: Any] = [
-      "message": "Foto capturada desde las gafas",
-      "image": data.base64EncodedString()
-    ]
-    request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+    request.httpMethod = "GET"
     _ = try? await URLSession.shared.data(for: request)
   }
 
