@@ -17,9 +17,27 @@ workflows:
             -archivePath build/CameraAccess.xcarchive \
             archive \
             DEVELOPMENT_TEAM=L9M5LHV7CF \
-            CODE_SIGN_STYLE=Automatic \
-            PROVISIONING_PROFILE_SPECIFIER="" \
-            PRODUCT_BUNDLE_IDENTIFIER=com.juanmi.bidglasses \
-            -allowProvisioningUpdates
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Development: juan miguel goñi (JKP3HXA8PR)" \
+            PROVISIONING_PROFILE_SPECIFIER="BID Glasses Development" \
+            PRODUCT_BUNDLE_IDENTIFIER=com.juanmi.bidglasses
+      - name: Export IPA
+        script: |
+          cat > /tmp/export.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>development</string>
+            <key>teamID</key>
+            <string>L9M5LHV7CF</string>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive \
+            -archivePath samples/CameraAccess/build/CameraAccess.xcarchive \
+            -exportPath samples/CameraAccess/build/ipa \
+            -exportOptionsPlist /tmp/export.plist
     artifacts:
-      - samples/CameraAccess/build/*.ipa
+      - samples/CameraAccess/build/ipa/*.ipa
