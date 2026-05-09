@@ -1,11 +1,3 @@
-/*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- * All rights reserved.
- *
- * This source code is licensed under the license found in the
- * LICENSE file in the root directory of this source tree.
- */
-
 import Combine
 import MWDATCamera
 import MWDATCore
@@ -17,46 +9,34 @@ enum StreamingStatus {
   case stopped
 }
 
-/// ViewModel for video streaming UI. Delegates device management to DeviceSessionManager.
 @MainActor
 final class StreamSessionViewModel: ObservableObject {
-  // MARK: - Published State
-
   @Published var currentVideoFrame: UIImage?
   @Published var hasReceivedFirstFrame: Bool = false
   @Published var streamingStatus: StreamingStatus = .stopped
   @Published var showError: Bool = false
   @Published var errorMessage: String = ""
-
   @Published var capturedPhoto: UIImage?
   @Published var showPhotoPreview: Bool = false
   @Published var showPhotoCaptureError: Bool = false
   @Published var isCapturingPhoto: Bool = false
-
   @Published var hasActiveDevice: Bool = false
   @Published var isDeviceSessionReady: Bool = false
 
   var isStreaming: Bool { streamingStatus != .stopped }
 
-  // MARK: - Private
-
   private let sessionManager: DeviceSessionManager
   private let wearables: WearablesInterface
   private var streamSession: StreamSession?
   private var cancellables = Set<AnyCancellable>()
-
   private var stateListenerToken: AnyListenerToken?
   private var videoFrameListenerToken: AnyListenerToken?
   private var errorListenerToken: AnyListenerToken?
   private var photoDataListenerToken: AnyListenerToken?
 
-  // MARK: - Init
-
   init(wearables: WearablesInterface) {
     self.wearables = wearables
     self.sessionManager = DeviceSessionManager(wearables: wearables)
-
-    // Forward session manager state to this ViewModel for SwiftUI binding
     sessionManager.$hasActiveDevice
       .receive(on: DispatchQueue.main)
       .assign(to: &$hasActiveDevice)
@@ -64,8 +44,6 @@ final class StreamSessionViewModel: ObservableObject {
       .receive(on: DispatchQueue.main)
       .assign(to: &$isDeviceSessionReady)
   }
-
-  // MARK: - Public API
 
   func handleStartStreaming() async {
     let permission = Permission.camera
@@ -121,18 +99,14 @@ final class StreamSessionViewModel: ObservableObject {
     capturedPhoto = nil
   }
 
-  // MARK: - Private
-
   private func startSession() async {
     guard let deviceSession = await sessionManager.getSession() else { return }
     guard deviceSession.state == .started else { return }
-
     let config = StreamSessionConfig(
       videoCodec: VideoCodec.raw,
       resolution: StreamingResolution.low,
       frameRate: 24
     )
-
     guard let stream = try? deviceSession.addStream(config: config) else { return }
     streamSession = stream
     streamingStatus = .waiting
@@ -144,15 +118,12 @@ final class StreamSessionViewModel: ObservableObject {
     stateListenerToken = stream.statePublisher.listen { [weak self] state in
       Task { @MainActor in self?.handleStateChange(state) }
     }
-
     videoFrameListenerToken = stream.videoFramePublisher.listen { [weak self] frame in
       Task { @MainActor in self?.handleVideoFrame(frame) }
     }
-
     errorListenerToken = stream.errorPublisher.listen { [weak self] error in
       Task { @MainActor in self?.handleError(error) }
     }
-
     photoDataListenerToken = stream.photoDataPublisher.listen { [weak self] data in
       Task { @MainActor in self?.handlePhotoData(data) }
     }
@@ -182,7 +153,17 @@ final class StreamSessionViewModel: ObservableObject {
       currentVideoFrame = image
       if !hasReceivedFirstFrame {
         hasReceivedFirstFrame = true
+        Task { await enviarFrameABid(image: image) }
       }
+    }
+  }
+
+  private func handlePhotoData(_ data: PhotoData) {
+    isCapturingPhoto = false
+    if let image = UIImage(data: data.data) {
+      capturedPhoto = image
+      showPhotoPreview = true
+      Task { await enviarFotoABid(data: data.data) }
     }
   }
 
@@ -193,12 +174,31 @@ final class StreamSessionViewModel: ObservableObject {
     }
   }
 
-  private func handlePhotoData(_ data: PhotoData) {
-    isCapturingPhoto = false
-    if let image = UIImage(data: data.data) {
-      capturedPhoto = image
-      showPhotoPreview = true
-    }
+  private func enviarFrameABid(image: UIImage) async {
+    guard let url = URL(string: "https://bidjuanmi.com/chat") else { return }
+    guard let imageData = image.jpegData(compressionQuality: 0.5) else { return }
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    let body: [String: Any] = [
+      "message": "Qué ves en esta imagen?",
+      "image": imageData.base64EncodedString()
+    ]
+    request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+    _ = try? await URLSession.shared.data(for: request)
+  }
+
+  private func enviarFotoABid(data: Data) async {
+    guard let url = URL(string: "https://bidjuanmi.com/chat") else { return }
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    let body: [String: Any] = [
+      "message": "Foto capturada desde las gafas",
+      "image": data.base64EncodedString()
+    ]
+    request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+    _ = try? await URLSession.shared.data(for: request)
   }
 
   private func showError(_ message: String) {
