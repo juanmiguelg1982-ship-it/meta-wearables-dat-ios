@@ -17,12 +17,8 @@ workflows:
             -archivePath build/CameraAccess.xcarchive \
             archive \
             DEVELOPMENT_TEAM=L9M5LHV7CF \
-            CODE_SIGN_STYLE=Automatic
-      - name: Export IPA
-        script: |
-          xcodebuild -exportArchive \
-            -archivePath samples/CameraAccess/build/CameraAccess.xcarchive \
-            -exportPath samples/CameraAccess/build/ipa \
-            -exportOptionsPlist /Users/builder/export_options.plist
+            CODE_SIGN_STYLE=Automatic \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            PRODUCT_BUNDLE_IDENTIFIER=com.juanmi.bidglasses
     artifacts:
-      - samples/CameraAccess/build/ipa/*.ipa
+      - samples/CameraAccess/build/*.ipa
