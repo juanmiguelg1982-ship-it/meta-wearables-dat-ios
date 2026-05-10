@@ -41,7 +41,6 @@ final class BidEscuchaManager: NSObject {
     parar()
     speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
 
-    // NO tocamos AVAudioSession — el SDK de Meta ya la gestiona
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
     guard let recognitionRequest = recognitionRequest else { return }
     recognitionRequest.shouldReportPartialResults = true
@@ -119,7 +118,8 @@ final class BidEscuchaManager: NSObject {
 
     let url = FileManager.default.temporaryDirectory.appendingPathComponent("bid_wake.wav")
 
-    let sampleRate: UInt32 = 44100
+    // Sample rate real del audioEngine
+    let sampleRate = UInt32(audioEngine.inputNode.outputFormat(forBus: 0).sampleRate)
     let numChannels: UInt16 = 1
     let bitsPerSample: UInt16 = 32
     let dataSize = UInt32(grabacionBuffer.count)
