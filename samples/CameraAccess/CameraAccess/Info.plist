@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>CameraAccess</string>
+	<string>BID</string>
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
@@ -33,22 +33,21 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<!-- Begin required section for Device Access Toolkit Apps -->
-	<!-- Meta Wearables Device Access Toolkit Setup -->
 	<key>MWDAT</key>
 	<dict>
 		<key>AppLinkURLScheme</key>
-		<!-- Tell DAT your URL scheme so it can be called back from Meta AI -->
 		<string>cameraaccess://</string>
 		<key>MetaAppID</key>
-		<!-- Without Developer Mode, this key will need to be set with ID from the app registered in Wearables Developer Center -->
 		<string>$(META_APP_ID)</string>
-		<!-- Without Developer Mode, this key will need to be set with ClientToken from the app registered in Wearables Developer Center -->
 		<key>ClientToken</key>
 		<string>$(CLIENT_TOKEN)</string>
-		<!-- Without Developer Mode, this key will need to be set with your Apple Developer Team ID - Set this in Xcode under Signing & Capabilities -->
 		<key>TeamID</key>
 		<string>$(DEVELOPMENT_TEAM)</string>
+	</dict>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
 	</dict>
 	<key>UIBackgroundModes</key>
 	<array>
@@ -69,7 +68,6 @@
 	<array>
 		<string>com.meta.ar.wearable</string>
 	</array>
-	<!-- End required section for Device Access Toolkit Apps -->
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>This app needs access to save photos captured from your glasses.</string>
 	<key>NSCameraUsageDescription</key>
@@ -81,14 +79,12 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>armv7</string>
 	</array>
-
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
