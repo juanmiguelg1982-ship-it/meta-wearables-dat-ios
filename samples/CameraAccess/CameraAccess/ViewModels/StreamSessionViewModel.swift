@@ -13,29 +13,26 @@ enum StreamingStatus {
 // MARK: - Audio Player
 final class BidAudioPlayer: NSObject, @unchecked Sendable {
   static let shared = BidAudioPlayer()
-  private var player: AVPlayer?
-  private let synth = AVSpeechSynthesizer()
+  private var player: AVAudioPlayer?
 
   private override init() {
     super.init()
+    try? AVAudioSession.sharedInstance().setCategory(
+      .playback,
+      mode: .default,
+      options: [.allowBluetooth]
+    )
+    try? AVAudioSession.sharedInstance().setActive(true)
   }
 
   func play(data: Data) {
-    let url = FileManager.default.temporaryDirectory.appendingPathComponent("bid_response.mp3")
-    try? data.write(to: url)
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-      let item = AVPlayerItem(url: url)
-      self.player = AVPlayer(playerItem: item)
-      self.player?.volume = 1.0
-      self.player?.play()
+    do {
+      player = try AVAudioPlayer(data: data)
+      player?.prepareToPlay()
+      player?.play()
+    } catch {
+      print("BidAudioPlayer error: \(error)")
     }
-  }
-
-  func playText(_ texto: String) {
-    let utterance = AVSpeechUtterance(string: texto)
-    utterance.voice = AVSpeechSynthesisVoice(language: "es-ES")
-    utterance.rate = 0.5
-    synth.speak(utterance)
   }
 }
 
@@ -232,8 +229,13 @@ final class StreamSessionViewModel: ObservableObject {
   }
 
   func reproducirAudio(texto: String) async {
-    // Usar voz del sistema iOS — sale siempre por donde esté el audio activo (gafas)
-    BidAudioPlayer.shared.playText(texto)
+    guard var components = URLComponents(string: "https://bidjuanmi.com/tts") else { return }
+    components.queryItems = [URLQueryItem(name: "text", value: texto)]
+    guard let url = components.url else { return }
+    do {
+      let (data, _) = try await URLSession.shared.data(from: url)
+      BidAudioPlayer.shared.play(data: data)
+    } catch { return }
   }
 
   func showErrorMsg(_ message: String) {
