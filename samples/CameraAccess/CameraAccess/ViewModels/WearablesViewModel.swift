@@ -68,7 +68,8 @@ final class BidEscuchaManager: NSObject {
       guard let self = self else { return }
       if let result = result {
         let texto = result.bestTranscription.formattedString.lowercased()
-        if self.escuchandoWakeWord && (texto.hasSuffix("bid") || texto.contains("bid ") || texto == "bid") {
+        self.onEstado("👂 \(texto)")
+        if self.escuchandoWakeWord && (texto.hasSuffix("bid") || texto.contains("bid ") || texto == "bid") {  
           DispatchQueue.main.async { self.wakeWordDetectado() }
         }
       }
