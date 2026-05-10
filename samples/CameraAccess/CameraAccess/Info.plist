@@ -55,11 +55,16 @@
 		<string>bluetooth-central</string>
 		<string>bluetooth-peripheral</string>
 		<string>external-accessory</string>
+		<string>audio</string>
 	</array>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Needed to connect to Meta AI Glasses</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>This allows your phone to find and connect to your glasses over Wi-Fi.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>BID necesita el micrófono para escuchar tus preguntas por las gafas.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>BID usa reconocimiento de voz para detectar la palabra clave BID.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_bonjour._tcp</string>
