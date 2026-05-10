@@ -116,27 +116,23 @@ final class StreamSessionViewModel: ObservableObject {
 
   private func setupListeners(for stream: StreamSession) {
     stateListenerToken = stream.statePublisher.listen { [weak self] state in
-      guard let self = self else { return }
-      Task { @MainActor [self] in
-        self.handleStateChange(state)
+      Task { @MainActor in
+        await self?.handleStateChange(state)
       }
     }
     videoFrameListenerToken = stream.videoFramePublisher.listen { [weak self] frame in
-      guard let self = self else { return }
-      Task { @MainActor [self] in
-        self.handleVideoFrame(frame)
+      Task { @MainActor in
+        await self?.handleVideoFrame(frame)
       }
     }
     errorListenerToken = stream.errorPublisher.listen { [weak self] error in
-      guard let self = self else { return }
-      Task { @MainActor [self] in
-        self.handleError(error)
+      Task { @MainActor in
+        await self?.handleError(error)
       }
     }
     photoDataListenerToken = stream.photoDataPublisher.listen { [weak self] data in
-      guard let self = self else { return }
-      Task { @MainActor [self] in
-        self.handlePhotoData(data)
+      Task { @MainActor in
+        await self?.handlePhotoData(data)
       }
     }
   }
@@ -148,7 +144,7 @@ final class StreamSessionViewModel: ObservableObject {
     photoDataListenerToken = nil
   }
 
-  private func handleStateChange(_ state: StreamSessionState) {
+  func handleStateChange(_ state: StreamSessionState) async {
     switch state {
     case .stopped:
       currentVideoFrame = nil
@@ -157,37 +153,37 @@ final class StreamSessionViewModel: ObservableObject {
       streamingStatus = .waiting
     case .streaming:
       streamingStatus = .streaming
-      Task { await enviarMensajeABid(mensaje: "Streaming iniciado desde las gafas Ray-Ban Meta") }
+      await enviarMensajeABid(mensaje: "Streaming iniciado desde las gafas Ray-Ban Meta")
     }
   }
 
-  private func handleVideoFrame(_ frame: VideoFrame) {
+  func handleVideoFrame(_ frame: VideoFrame) async {
     if let image = frame.makeUIImage() {
       currentVideoFrame = image
       if !hasReceivedFirstFrame {
         hasReceivedFirstFrame = true
-        Task { await enviarFrameABid(image: image) }
+        await enviarFrameABid(image: image)
       }
     }
   }
 
-  private func handlePhotoData(_ data: PhotoData) {
+  func handlePhotoData(_ data: PhotoData) async {
     isCapturingPhoto = false
     if let image = UIImage(data: data.data) {
       capturedPhoto = image
       showPhotoPreview = true
-      Task { await enviarFotoABid(data: data.data) }
+      await enviarFotoABid(data: data.data)
     }
   }
 
-  private func handleError(_ error: StreamSessionError) {
+  func handleError(_ error: StreamSessionError) async {
     let message = formatError(error)
     if message != errorMessage {
       showError(message)
     }
   }
 
-  private func enviarMensajeABid(mensaje: String) async {
+  func enviarMensajeABid(mensaje: String) async {
     guard var components = URLComponents(string: "https://bidjuanmi.com/chat-stream") else { return }
     components.queryItems = [URLQueryItem(name: "message", value: mensaje)]
     guard let url = components.url else { return }
@@ -196,7 +192,7 @@ final class StreamSessionViewModel: ObservableObject {
     _ = try? await URLSession.shared.data(for: request)
   }
 
-  private func enviarFrameABid(image: UIImage) async {
+  func enviarFrameABid(image: UIImage) async {
     guard var components = URLComponents(string: "https://bidjuanmi.com/chat-stream") else { return }
     components.queryItems = [URLQueryItem(name: "message", value: "Que ves en esta imagen de mis gafas?")]
     guard let url = components.url else { return }
@@ -205,7 +201,7 @@ final class StreamSessionViewModel: ObservableObject {
     _ = try? await URLSession.shared.data(for: request)
   }
 
-  private func enviarFotoABid(data: Data) async {
+  func enviarFotoABid(data: Data) async {
     guard var components = URLComponents(string: "https://bidjuanmi.com/chat-stream") else { return }
     components.queryItems = [URLQueryItem(name: "message", value: "Foto capturada desde mis gafas Ray-Ban Meta")]
     guard let url = components.url else { return }
@@ -214,7 +210,7 @@ final class StreamSessionViewModel: ObservableObject {
     _ = try? await URLSession.shared.data(for: request)
   }
 
-  private func showError(_ message: String) {
+  func showError(_ message: String) {
     errorMessage = message
     showError = true
   }
