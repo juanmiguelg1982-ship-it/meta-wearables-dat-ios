@@ -35,34 +35,37 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   }
 
   private func iniciarEscucha() {
-    recognitionTask?.cancel()
-    recognitionTask = nil
-    recognitionRequest = nil
+  recognitionTask?.cancel()
+  recognitionTask = nil
+  recognitionRequest = nil
 
-    recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-    guard let recognitionRequest = recognitionRequest else { return }
-    recognitionRequest.shouldReportPartialResults = true
+  recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+  guard let recognitionRequest = recognitionRequest else { return }
+  recognitionRequest.shouldReportPartialResults = true
 
-    recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { [weak self] result, error in
-      guard let self = self else { return }
+  recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { [weak self] result, error in
+    guard let self = self else { return }
 
-      if let result = result {
-        let texto = result.bestTranscription.formattedString.lowercased()
-        if !self.grabandoRespuesta && (
-          texto.hasSuffix("bid") || texto.contains("bid ") || texto == "bid" ||
-          texto.hasSuffix("david") || texto.contains("david") ||
-          texto.hasSuffix("vid") || texto.hasSuffix("bit")
-        ) {
-          DispatchQueue.main.async { self.wakeWordDetectado() }
-        }
-      }
-
-      if error != nil {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-          self.iniciarEscucha()
-        }
+    if let result = result {
+      let texto = result.bestTranscription.formattedString.lowercased()
+      if !self.grabandoRespuesta && (
+        texto.hasSuffix("bid") || texto.contains("bid ") || texto == "bid" ||
+        texto.hasSuffix("david") || texto.contains("david") ||
+        texto.hasSuffix("vid") || texto.hasSuffix("bit")
+      ) {
+        DispatchQueue.main.async { self.wakeWordDetectado() }
       }
     }
+
+    if error != nil {
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        self.iniciarEscucha()
+      }
+    }
+  }
+
+  onEstado("Escuchando... di BID")
+}
 
     // Usar AVAudioSession del sistema SIN modificarla
     let inputNode = AVAudioEngine().inputNode
