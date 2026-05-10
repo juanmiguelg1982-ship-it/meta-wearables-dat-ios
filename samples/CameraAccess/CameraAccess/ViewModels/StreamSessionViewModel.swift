@@ -16,12 +16,7 @@ final class BidAudioPlayer: NSObject, @unchecked Sendable {
 
   private override init() {
     super.init()
-    try? AVAudioSession.sharedInstance().setCategory(
-      .playback,
-      mode: .default,
-      options: [.allowBluetooth]
-    )
-    try? AVAudioSession.sharedInstance().setActive(true)
+    // Sin AVAudioSession — iOS decide solo
   }
 
   func play(data: Data) {
