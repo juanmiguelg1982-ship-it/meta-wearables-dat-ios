@@ -8,6 +8,7 @@ class WearablesViewModel: ObservableObject {
   @Published var showGettingStartedSheet: Bool = false
   @Published var showError: Bool = false
   @Published var errorMessage: String = ""
+  @Published var bidStatus: String = "Iniciando..."
   private var registrationTask: Task<Void, Never>?
   private var deviceStreamTask: Task<Void, Never>?
   private var setupDeviceStreamTask: Task<Void, Never>?
@@ -31,10 +32,20 @@ class WearablesViewModel: ObservableObject {
       }
     }
     Task {
-      guard let url = URL(string: "https://bidjuanmi.com/chat-stream?message=AppArranc%C3%B3") else { return }
-      var request = URLRequest(url: url)
-      request.timeoutInterval = 10
-      _ = try? await URLSession.shared.data(for: request)
+      bidStatus = "Conectando..."
+      guard let url = URL(string: "https://bidjuanmi.com/chat-stream?message=AppArranc%C3%B3") else {
+        bidStatus = "Error: URL invalida"
+        return
+      }
+      do {
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 10
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let http = response as? HTTPURLResponse
+        bidStatus = "OK \(http?.statusCode ?? 0) - \(data.count) bytes"
+      } catch {
+        bidStatus = "Error: \(error.localizedDescription)"
+      }
     }
   }
 
