@@ -81,79 +81,90 @@ class WearablesViewModel: ObservableObject {
   }
 
   func arrancarEscucha() {
-    guard !audioEngine.isRunning else { return }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-      self.iniciarReconocimientoWakeWord()
-    }
+  guard !audioEngine.isRunning else { return }
+  // Esperar 3 segundos para que el SDK de Meta termine de inicializarse
+  DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+    self.iniciarReconocimientoWakeWord()
   }
+}
 
   private func iniciarReconocimientoWakeWord() {
-    pararReconocimiento()
+  pararReconocimiento()
 
+  do {
     let session = AVAudioSession.sharedInstance()
-    try? session.setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth, .defaultToSpeaker, .mixWithOthers])
-    try? session.setActive(true)
+    try session.setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth, .defaultToSpeaker, .mixWithOthers])
+    try session.setActive(true)
 
-    // Preferir micrófono de las gafas si están conectadas por Bluetooth
     if let btInput = session.availableInputs?.first(where: {
       $0.portType == .bluetoothHFP
     }) {
-      try? session.setPreferredInput(btInput)
+      try session.setPreferredInput(btInput)
     }
+  } catch {
+    bidStatus = "Error audio: \(error.localizedDescription)"
+    return
+  }
 
-    recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-    guard let recognitionRequest = recognitionRequest else { return }
-    recognitionRequest.shouldReportPartialResults = true
+  recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+  guard let recognitionRequest = recognitionRequest else { return }
+  recognitionRequest.shouldReportPartialResults = true
 
-    let inputNode = audioEngine.inputNode
-    let formato = inputNode.outputFormat(forBus: 0)
+  let inputNode = audioEngine.inputNode
+  let formato = inputNode.outputFormat(forBus: 0)
 
-    recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { [weak self] result, error in
-      guard let self = self else { return }
+  guard formato.sampleRate > 0 else {
+    bidStatus = "Error: formato audio inválido"
+    return
+  }
 
-      if let result = result {
-        let texto = result.bestTranscription.formattedString.lowercased()
+  recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { [weak self] result, error in
+    guard let self = self else { return }
+    if let result = result {
+      let texto = result.bestTranscription.formattedString.lowercased()
+      if self.escuchandoWakeWord && (texto.hasSuffix("bid") || texto.contains("bid ") || texto == "bid") {
+        Task { @MainActor in
+          self.wakeWordDetectado()
+        }
+      }
+    }
+    if error != nil {
+      DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        self.iniciarReconocimientoWakeWord()
+      }
+    }
+  }
 
-        // Detectar palabra clave "bid"
-        if self.escuchandoWakeWord && (texto.hasSuffix("bid") || texto.contains("bid ") || texto == "bid") {
-          Task { @MainActor in
-            self.wakeWordDetectado()
+  inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
+    self?.recognitionRequest?.append(buffer)
+    if self?.grabandoRespuesta == true {
+      let channelData = buffer.floatChannelData?[0]
+      let frameLength = Int(buffer.frameLength)
+      if let channelData = channelData {
+        var bytes = [UInt8](repeating: 0, count: frameLength * 4)
+        for i in 0..<frameLength {
+          let sample = channelData[i]
+          withUnsafeBytes(of: sample) { ptr in
+            bytes[i*4..<i*4+4] = ArraySlice(ptr)
           }
         }
-      }
-
-      if error != nil {
-        // Reiniciar si hay error
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-          self.iniciarReconocimientoWakeWord()
-        }
+        self?.grabacionBuffer.append(contentsOf: bytes)
       }
     }
+  }
 
-    inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
-      self?.recognitionRequest?.append(buffer)
-
-      // Si estamos grabando respuesta, guardar también el audio
-      if self?.grabandoRespuesta == true {
-        let channelData = buffer.floatChannelData?[0]
-        let frameLength = Int(buffer.frameLength)
-        if let channelData = channelData {
-          var bytes = [UInt8](repeating: 0, count: frameLength * 4)
-          for i in 0..<frameLength {
-            let sample = channelData[i]
-            withUnsafeBytes(of: sample) { ptr in
-              bytes[i*4..<i*4+4] = ArraySlice(ptr)
-            }
-          }
-          self?.grabacionBuffer.append(contentsOf: bytes)
-        }
-      }
-    }
-
-    try? audioEngine.start()
+  do {
+    try audioEngine.start()
     escuchandoWakeWord = true
     bidStatus = "Escuchando... di BID"
+  } catch {
+    bidStatus = "Error iniciando audio: \(error.localizedDescription)"
+    // Reintentar en 3 segundos
+    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+      self.iniciarReconocimientoWakeWord()
+    }
   }
+}
 
   private func wakeWordDetectado() {
     guard !grabandoRespuesta else { return }
