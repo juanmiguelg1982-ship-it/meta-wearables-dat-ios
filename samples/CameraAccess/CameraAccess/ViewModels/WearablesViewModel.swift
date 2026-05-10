@@ -35,43 +35,31 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   }
 
   private func iniciarEscucha() {
-  recognitionTask?.cancel()
-  recognitionTask = nil
-  recognitionRequest = nil
+    recognitionTask?.cancel()
+    recognitionTask = nil
+    recognitionRequest = nil
 
-  recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-  guard let recognitionRequest = recognitionRequest else { return }
-  recognitionRequest.shouldReportPartialResults = true
+    recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+    guard let recognitionRequest = recognitionRequest else { return }
+    recognitionRequest.shouldReportPartialResults = true
 
-  recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { [weak self] result, error in
-    guard let self = self else { return }
-
-    if let result = result {
-      let texto = result.bestTranscription.formattedString.lowercased()
-      if !self.grabandoRespuesta && (
-        texto.hasSuffix("bid") || texto.contains("bid ") || texto == "bid" ||
-        texto.hasSuffix("david") || texto.contains("david") ||
-        texto.hasSuffix("vid") || texto.hasSuffix("bit")
-      ) {
-        DispatchQueue.main.async { self.wakeWordDetectado() }
+    recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { [weak self] result, error in
+      guard let self = self else { return }
+      if let result = result {
+        let texto = result.bestTranscription.formattedString.lowercased()
+        if !self.grabandoRespuesta && (
+          texto.hasSuffix("bid") || texto.contains("bid ") || texto == "bid" ||
+          texto.hasSuffix("david") || texto.contains("david") ||
+          texto.hasSuffix("vid") || texto.hasSuffix("bit")
+        ) {
+          DispatchQueue.main.async { self.wakeWordDetectado() }
+        }
       }
-    }
-
-    if error != nil {
-      DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-        self.iniciarEscucha()
+      if error != nil {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+          self.iniciarEscucha()
+        }
       }
-    }
-  }
-
-  onEstado("Escuchando... di BID")
-}
-
-    // Usar AVAudioSession del sistema SIN modificarla
-    let inputNode = AVAudioEngine().inputNode
-    let formato = inputNode.outputFormat(forBus: 0)
-    inputNode.installTap(onBus: 0, bufferSize: 4096, format: formato) { [weak self] buffer, _ in
-      self?.recognitionRequest?.append(buffer)
     }
 
     onEstado("Escuchando... di BID")
@@ -83,7 +71,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     onEstado("🎤 Escuchando pregunta...")
     AudioServicesPlaySystemSound(1057)
 
-    // Grabar con AVAudioRecorder que no interfiere con el SDK
     let url = FileManager.default.temporaryDirectory.appendingPathComponent("bid_pregunta.m4a")
     grabacionURL = url
 
