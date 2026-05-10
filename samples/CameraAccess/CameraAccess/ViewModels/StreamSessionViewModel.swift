@@ -1,3 +1,4 @@
+// StreamSessionViewModel.swift
 import AVFoundation
 import Combine
 import MWDATCamera
@@ -16,16 +17,35 @@ final class BidAudioPlayer: NSObject, @unchecked Sendable {
 
   private override init() {
     super.init()
-    // Sin AVAudioSession — iOS decide solo
   }
 
   func play(data: Data) {
+    // Pausar el engine de escucha
+    BidEscuchaManager.pausarEngine()
+
+    try? AVAudioSession.sharedInstance().setCategory(
+      .playback,
+      mode: .default,
+      options: [.allowBluetooth]
+    )
+    try? AVAudioSession.sharedInstance().setActive(true)
+
     do {
       player = try AVAudioPlayer(data: data)
+      player?.delegate = self
       player?.prepareToPlay()
       player?.play()
     } catch {
-      print("BidAudioPlayer error: \(error)")
+      BidEscuchaManager.reanudarEngine()
+    }
+  }
+}
+
+extension BidAudioPlayer: AVAudioPlayerDelegate {
+  func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+    // Reanudar escucha cuando termina el audio
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+      BidEscuchaManager.reanudarEngine()
     }
   }
 }
