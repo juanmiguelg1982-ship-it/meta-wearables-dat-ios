@@ -31,7 +31,7 @@ class WearablesViewModel: ObservableObject {
       }
     }
     Task {
-      guard let url = URL(string: "http://79.116.235.125:8000/chat-stream?message=AppArranc%C3%B3") else { return }
+      guard let url = URL(string: "https://bidjuanmi.com/chat-stream?message=AppArranc%C3%B3") else { return }
       var request = URLRequest(url: url)
       request.timeoutInterval = 10
       _ = try? await URLSession.shared.data(for: request)
