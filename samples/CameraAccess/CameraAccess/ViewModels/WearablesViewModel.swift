@@ -18,6 +18,9 @@ class WearablesViewModel: ObservableObject {
   private let wearables: WearablesInterface
   private var compatibilityListenerTokens: [DeviceIdentifier: AnyListenerToken] = [:]
 
+  // Audio
+  private var bidEscucha: BidEscuchaManager?
+
   init(wearables: WearablesInterface) {
     self.wearables = wearables
     self.devices = wearables.devices
@@ -62,7 +65,21 @@ class WearablesViewModel: ObservableObject {
   }
 
   func arrancarEscucha() {
-    bidStatus = "Listo - voz próximamente"
+    guard bidEscucha == nil else { return }
+    bidEscucha = BidEscuchaManager { [weak self] estado in
+      Task { @MainActor in
+        self?.bidStatus = estado
+      }
+    } onPregunta: { [weak self] texto in
+      Task { @MainActor in
+        guard let self = self else { return }
+        self.bidStatus = "Tú: \(texto)"
+        let vm = StreamSessionViewModel(wearables: self.wearables)
+        await vm.enviarMensajeABid(mensaje: texto)
+        self.bidStatus = "Escuchando... di BID"
+      }
+    }
+    bidEscucha?.arrancar()
   }
 
   private func setupDeviceStream() async {
