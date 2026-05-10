@@ -187,9 +187,61 @@ final class StreamSessionViewModel: ObservableObject {
     guard var components = URLComponents(string: "https://bidjuanmi.com/chat-stream") else { return }
     components.queryItems = [URLQueryItem(name: "message", value: mensaje)]
     guard let url = components.url else { return }
-    var request = URLRequest(url: url)
-    request.httpMethod = "GET"
-    _ = try? await URLSession.shared.data(for: request)
+
+    // Leer respuesta SSE línea a línea
+    var textoCompleto = ""
+    do {
+      let (asyncBytes, _) = try await URLSession.shared.bytes(from: url)
+      for try await line in asyncBytes.lines {
+        if line.hasPrefix("data: ") {
+          let json = String(line.dropFirst(6))
+          if let data = json.data(using: .utf8),
+             let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            if let texto = obj["text"] as? String {
+              textoCompleto += texto
+            }
+            if let done = obj["done"] as? Bool, done {
+              break
+            }
+          }
+        }
+      }
+    } catch {
+      return
+    }
+
+    // Reproducir respuesta por los auriculares
+    if !textoCompleto.isEmpty {
+      await reproducirAudio(texto: textoCompleto)
+    }
+  }
+
+  func reproducirAudio(texto: String) async {
+    guard var components = URLComponents(string: "https://bidjuanmi.com/tts") else { return }
+    components.queryItems = [URLQueryItem(name: "text", value: texto)]
+    guard let url = components.url else { return }
+
+    do {
+      let (data, _) = try await URLSession.shared.data(from: url)
+      await MainActor.run {
+        BidAudioPlayer.shared.play(data: data)
+      }
+    } catch {
+      return
+    }
+  }
+
+  func enviarFrameABid(image: UIImage) async {
+    await enviarMensajeABid(mensaje: "Que ves en esta imagen de mis gafas?")
+  }
+
+  func enviarFotoABid(data: Data) async {
+    await enviarMensajeABid(mensaje: "Foto capturada desde mis gafas Ray-Ban Meta")
+  }
+
+  func showError(_ message: String) {
+    errorMessage = message
+    showError = true
   }
 
   func enviarFrameABid(image: UIImage) async {
