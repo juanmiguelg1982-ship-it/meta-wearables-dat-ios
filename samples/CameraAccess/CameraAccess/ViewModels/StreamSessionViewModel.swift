@@ -1,3 +1,4 @@
+import AVFoundation
 import Combine
 import MWDATCamera
 import MWDATCore
@@ -9,6 +10,33 @@ enum StreamingStatus {
   case stopped
 }
 
+// MARK: - Audio Player
+final class BidAudioPlayer: NSObject, @unchecked Sendable {
+  static let shared = BidAudioPlayer()
+  private var player: AVAudioPlayer?
+
+  private override init() {
+    super.init()
+    try? AVAudioSession.sharedInstance().setCategory(
+      .playback,
+      mode: .default,
+      options: [.allowBluetooth]
+    )
+    try? AVAudioSession.sharedInstance().setActive(true)
+  }
+
+  func play(data: Data) {
+    do {
+      player = try AVAudioPlayer(data: data)
+      player?.prepareToPlay()
+      player?.play()
+    } catch {
+      print("BidAudioPlayer error: \(error)")
+    }
+  }
+}
+
+// MARK: - ViewModel
 @MainActor
 final class StreamSessionViewModel: ObservableObject {
   @Published var currentVideoFrame: UIImage?
@@ -53,12 +81,12 @@ final class StreamSessionViewModel: ObservableObject {
         status = try await wearables.requestPermission(permission)
       }
       guard status == .granted else {
-        showError("Permission denied")
+        showErrorMsg("Permission denied")
         return
       }
       await startSession()
     } catch {
-      showError("Permission error: \(error.description)")
+      showErrorMsg("Permission error: \(error.description)")
     }
   }
 
@@ -162,7 +190,7 @@ final class StreamSessionViewModel: ObservableObject {
       currentVideoFrame = image
       if !hasReceivedFirstFrame {
         hasReceivedFirstFrame = true
-        await enviarFrameABid(image: image)
+        await enviarMensajeABid(mensaje: "Que ves en esta imagen de mis gafas?")
       }
     }
   }
@@ -172,23 +200,24 @@ final class StreamSessionViewModel: ObservableObject {
     if let image = UIImage(data: data.data) {
       capturedPhoto = image
       showPhotoPreview = true
-      await enviarFotoABid(data: data.data)
+      await enviarMensajeABid(mensaje: "Foto capturada desde mis gafas Ray-Ban Meta")
     }
   }
 
   func handleError(_ error: StreamSessionError) async {
     let message = formatError(error)
     if message != errorMessage {
-      showError(message)
+      showErrorMsg(message)
     }
   }
+
+  // MARK: - BID
 
   func enviarMensajeABid(mensaje: String) async {
     guard var components = URLComponents(string: "https://bidjuanmi.com/chat-stream") else { return }
     components.queryItems = [URLQueryItem(name: "message", value: mensaje)]
     guard let url = components.url else { return }
 
-    // Leer respuesta SSE línea a línea
     var textoCompleto = ""
     do {
       let (asyncBytes, _) = try await URLSession.shared.bytes(from: url)
@@ -210,7 +239,6 @@ final class StreamSessionViewModel: ObservableObject {
       return
     }
 
-    // Reproducir respuesta por los auriculares
     if !textoCompleto.isEmpty {
       await reproducirAudio(texto: textoCompleto)
     }
@@ -220,49 +248,15 @@ final class StreamSessionViewModel: ObservableObject {
     guard var components = URLComponents(string: "https://bidjuanmi.com/tts") else { return }
     components.queryItems = [URLQueryItem(name: "text", value: texto)]
     guard let url = components.url else { return }
-
     do {
       let (data, _) = try await URLSession.shared.data(from: url)
-      await MainActor.run {
-        BidAudioPlayer.shared.play(data: data)
-      }
+      BidAudioPlayer.shared.play(data: data)
     } catch {
       return
     }
   }
 
-  func enviarFrameABid(image: UIImage) async {
-    await enviarMensajeABid(mensaje: "Que ves en esta imagen de mis gafas?")
-  }
-
-  func enviarFotoABid(data: Data) async {
-    await enviarMensajeABid(mensaje: "Foto capturada desde mis gafas Ray-Ban Meta")
-  }
-
-  func showError(_ message: String) {
-    errorMessage = message
-    showError = true
-  }
-
-  func enviarFrameABid(image: UIImage) async {
-    guard var components = URLComponents(string: "https://bidjuanmi.com/chat-stream") else { return }
-    components.queryItems = [URLQueryItem(name: "message", value: "Que ves en esta imagen de mis gafas?")]
-    guard let url = components.url else { return }
-    var request = URLRequest(url: url)
-    request.httpMethod = "GET"
-    _ = try? await URLSession.shared.data(for: request)
-  }
-
-  func enviarFotoABid(data: Data) async {
-    guard var components = URLComponents(string: "https://bidjuanmi.com/chat-stream") else { return }
-    components.queryItems = [URLQueryItem(name: "message", value: "Foto capturada desde mis gafas Ray-Ban Meta")]
-    guard let url = components.url else { return }
-    var request = URLRequest(url: url)
-    request.httpMethod = "GET"
-    _ = try? await URLSession.shared.data(for: request)
-  }
-
-  func showError(_ message: String) {
+  func showErrorMsg(_ message: String) {
     errorMessage = message
     showError = true
   }
