@@ -13,26 +13,20 @@ enum StreamingStatus {
 // MARK: - Audio Player
 final class BidAudioPlayer: NSObject, @unchecked Sendable {
   static let shared = BidAudioPlayer()
-  private var player: AVAudioPlayer?
+  private var player: AVPlayer?
 
   private override init() {
     super.init()
-    try? AVAudioSession.sharedInstance().setCategory(
-      .playback,
-      mode: .default,
-      options: [.allowBluetoothHFP, .allowAirPlay]
-    )
-    try? AVAudioSession.sharedInstance().setActive(true)
   }
 
   func play(data: Data) {
-    do {
-      player = try AVAudioPlayer(data: data)
-      player?.prepareToPlay()
-      player?.play()
-    } catch {
-      print("BidAudioPlayer error: \(error)")
-    }
+    // Guardar en fichero temporal y reproducir con AVPlayer
+    // AVPlayer respeta la AVAudioSession existente del SDK de Meta
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("bid_response.mp3")
+    try? data.write(to: url)
+    let item = AVPlayerItem(url: url)
+    player = AVPlayer(playerItem: item)
+    player?.play()
   }
 }
 
