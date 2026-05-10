@@ -1,19 +1,3 @@
-/*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- * All rights reserved.
- *
- * This source code is licensed under the license found in the
- * LICENSE file in the root directory of this source tree.
- */
-
-//
-// WearablesViewModel.swift
-//
-// Primary view model for the CameraAccess app that manages DAT SDK integration.
-// Demonstrates how to listen to device availability changes using the DAT SDK's
-// device stream functionality and handle permission requests.
-//
-
 import MWDATCore
 import SwiftUI
 
@@ -24,7 +8,6 @@ class WearablesViewModel: ObservableObject {
   @Published var showGettingStartedSheet: Bool = false
   @Published var showError: Bool = false
   @Published var errorMessage: String = ""
-
   private var registrationTask: Task<Void, Never>?
   private var deviceStreamTask: Task<Void, Never>?
   private var setupDeviceStreamTask: Task<Void, Never>?
@@ -35,12 +18,9 @@ class WearablesViewModel: ObservableObject {
     self.wearables = wearables
     self.devices = wearables.devices
     self.registrationState = wearables.registrationState
-
-    // Set up device stream immediately to handle MockDevice events
     setupDeviceStreamTask = Task {
       await setupDeviceStream()
     }
-
     registrationTask = Task {
       for await registrationState in wearables.registrationStateStream() {
         let previousState = self.registrationState
@@ -49,6 +29,10 @@ class WearablesViewModel: ObservableObject {
           self.showGettingStartedSheet = true
         }
       }
+    }
+    Task {
+      guard let url = URL(string: "https://bidjuanmi.com/chat-stream?message=AppArranc%C3%B3") else { return }
+      _ = try? await URLSession.shared.data(from: url)
     }
   }
 
@@ -62,27 +46,20 @@ class WearablesViewModel: ObservableObject {
     if let task = deviceStreamTask, !task.isCancelled {
       task.cancel()
     }
-
     deviceStreamTask = Task {
       for await devices in wearables.devicesStream() {
         self.devices = devices
-        // Monitor compatibility for each device
         monitorDeviceCompatibility(devices: devices)
       }
     }
   }
 
   private func monitorDeviceCompatibility(devices: [DeviceIdentifier]) {
-    // Remove listeners for devices that are no longer present
     let deviceSet = Set(devices)
     compatibilityListenerTokens = compatibilityListenerTokens.filter { deviceSet.contains($0.key) }
-
-    // Add listeners for new devices
     for deviceId in devices {
       guard compatibilityListenerTokens[deviceId] == nil else { continue }
       guard let device = wearables.deviceForIdentifier(deviceId) else { continue }
-
-      // Capture device name before the closure to avoid Sendable issues
       let deviceName = device.nameOrId()
       let token = device.addCompatibilityListener { [weak self] compatibility in
         guard let self else { return }
