@@ -16,14 +16,14 @@ final class BidAudioPlayer: NSObject, @unchecked Sendable {
   private var player: AVAudioPlayer?
 
   private override init() {
-    super.init()
-    try? AVAudioSession.sharedInstance().setCategory(
-      .playback,
-      mode: .default,
-      options: [.allowBluetooth]
-    )
-    try? AVAudioSession.sharedInstance().setActive(true)
-  }
+  super.init()
+  try? AVAudioSession.sharedInstance().setCategory(
+    .playback,
+    mode: .default,
+    options: [.allowBluetoothHFP, .allowAirPlay]
+  )
+  try? AVAudioSession.sharedInstance().setActive(true)
+}
 
   func play(data: Data) {
     do {
