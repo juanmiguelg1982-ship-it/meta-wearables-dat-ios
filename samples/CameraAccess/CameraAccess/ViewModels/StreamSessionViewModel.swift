@@ -14,19 +14,28 @@ enum StreamingStatus {
 final class BidAudioPlayer: NSObject, @unchecked Sendable {
   static let shared = BidAudioPlayer()
   private var player: AVPlayer?
+  private let synth = AVSpeechSynthesizer()
 
   private override init() {
     super.init()
   }
 
   func play(data: Data) {
-    // Guardar en fichero temporal y reproducir con AVPlayer
-    // AVPlayer respeta la AVAudioSession existente del SDK de Meta
     let url = FileManager.default.temporaryDirectory.appendingPathComponent("bid_response.mp3")
     try? data.write(to: url)
-    let item = AVPlayerItem(url: url)
-    player = AVPlayer(playerItem: item)
-    player?.play()
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+      let item = AVPlayerItem(url: url)
+      self.player = AVPlayer(playerItem: item)
+      self.player?.volume = 1.0
+      self.player?.play()
+    }
+  }
+
+  func playText(_ texto: String) {
+    let utterance = AVSpeechUtterance(string: texto)
+    utterance.voice = AVSpeechSynthesisVoice(language: "es-ES")
+    utterance.rate = 0.5
+    synth.speak(utterance)
   }
 }
 
@@ -223,13 +232,8 @@ final class StreamSessionViewModel: ObservableObject {
   }
 
   func reproducirAudio(texto: String) async {
-    guard var components = URLComponents(string: "https://bidjuanmi.com/tts") else { return }
-    components.queryItems = [URLQueryItem(name: "text", value: texto)]
-    guard let url = components.url else { return }
-    do {
-      let (data, _) = try await URLSession.shared.data(from: url)
-      BidAudioPlayer.shared.play(data: data)
-    } catch { return }
+    // Usar voz del sistema iOS — sale siempre por donde esté el audio activo (gafas)
+    BidAudioPlayer.shared.playText(texto)
   }
 
   func showErrorMsg(_ message: String) {
