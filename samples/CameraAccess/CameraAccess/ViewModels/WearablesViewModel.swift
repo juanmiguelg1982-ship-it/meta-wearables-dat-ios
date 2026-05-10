@@ -53,12 +53,11 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   }
 
   func reanudar() {
-    guard !grabandoRespuesta else { return }
-    try? AVAudioSession.sharedInstance().setCategory(
-      .record,
-      mode: .default,
-      options: [.allowBluetooth]
-    )
+  guard !grabandoRespuesta else { return }
+  DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+    self.iniciarEscucha()
+  }
+}
     try? AVAudioSession.sharedInstance().setActive(true)
     if !audioEngine.isRunning {
       try? audioEngine.start()
@@ -92,7 +91,10 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         if !self.grabandoRespuesta && (
           texto.hasSuffix("bid") || texto.contains("bid ") || texto == "bid" ||
           texto.hasSuffix("david") || texto.contains("david") ||
-          texto.hasSuffix("vid") || texto.hasSuffix("bit")
+          texto.hasSuffix("vid") || texto.hasSuffix("bit") ||
+          texto.hasSuffix("beat") || texto.hasSuffix("vид") ||
+          texto.contains("oye bid") || texto.contains("hey bid") ||
+          texto.hasSuffix("pid") || texto.hasSuffix("lid")
         ) {
           DispatchQueue.main.async { self.wakeWordDetectado() }
         }
