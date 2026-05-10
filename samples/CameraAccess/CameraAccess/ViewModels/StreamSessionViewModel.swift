@@ -10,7 +10,6 @@ enum StreamingStatus {
   case stopped
 }
 
-// MARK: - Audio Player
 final class BidAudioPlayer: NSObject, @unchecked Sendable {
   static let shared = BidAudioPlayer()
   private var player: AVAudioPlayer?
@@ -36,7 +35,6 @@ final class BidAudioPlayer: NSObject, @unchecked Sendable {
   }
 }
 
-// MARK: - ViewModel
 @MainActor
 final class StreamSessionViewModel: ObservableObject {
   @Published var currentVideoFrame: UIImage?
@@ -173,6 +171,7 @@ final class StreamSessionViewModel: ObservableObject {
       streamingStatus = .waiting
     case .streaming:
       streamingStatus = .streaming
+      NotificationCenter.default.post(name: NSNotification.Name("BIDStreamingActivo"), object: nil)
       await enviarMensajeABid(mensaje: "Streaming iniciado desde las gafas Ray-Ban Meta")
     }
   }
@@ -200,8 +199,6 @@ final class StreamSessionViewModel: ObservableObject {
     let message = formatError(error)
     if message != errorMessage { showErrorMsg(message) }
   }
-
-  // MARK: - BID
 
   func enviarMensajeABid(mensaje: String) async {
     guard var components = URLComponents(string: "https://bidjuanmi.com/chat-stream") else { return }
