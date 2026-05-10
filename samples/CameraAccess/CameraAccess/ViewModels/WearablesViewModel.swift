@@ -30,7 +30,7 @@ final class BidEscuchaManager: NSObject {
       guard status == .authorized else { return }
       AVAudioSession.sharedInstance().requestRecordPermission { [weak self] granted in
         guard granted else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
           self?.iniciar()
         }
       }
@@ -41,26 +41,17 @@ final class BidEscuchaManager: NSObject {
     parar()
     speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
 
-    do {
-      let session = AVAudioSession.sharedInstance()
-      try session.setCategory(.playAndRecord, mode: .default, options: [.allowBluetoothHFP, .defaultToSpeaker, .mixWithOthers])
-      try session.setActive(true, options: .notifyOthersOnDeactivation)
-      if let btInput = session.availableInputs?.first(where: { $0.portType == .bluetoothHFP }) {
-        try session.setPreferredInput(btInput)
-      }
-    } catch {
-      onEstado("Error audio: \(error.localizedDescription)")
-      return
-    }
-
+    // NO tocamos AVAudioSession — el SDK de Meta ya la gestiona
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
     guard let recognitionRequest = recognitionRequest else { return }
     recognitionRequest.shouldReportPartialResults = true
 
     let inputNode = audioEngine.inputNode
     let formato = inputNode.outputFormat(forBus: 0)
+
     guard formato.sampleRate > 0 else {
-      onEstado("Error: formato audio inválido")
+      onEstado("Error: formato inválido")
+      DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { self.iniciar() }
       return
     }
 
@@ -72,7 +63,7 @@ final class BidEscuchaManager: NSObject {
           texto.hasSuffix("bid") || texto.contains("bid ") || texto == "bid" ||
           texto.hasSuffix("david") || texto.contains("david ") || texto == "david" ||
           texto.hasSuffix("vid") || texto.hasSuffix("bit") || texto.hasSuffix("beat")
-        ) {  
+        ) {
           DispatchQueue.main.async { self.wakeWordDetectado() }
         }
       }
@@ -102,7 +93,7 @@ final class BidEscuchaManager: NSObject {
       escuchandoWakeWord = true
       onEstado("Escuchando... di BID")
     } catch {
-      onEstado("Error iniciando audio: \(error.localizedDescription)")
+      onEstado("Error: \(error.localizedDescription)")
       DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { self.iniciar() }
     }
   }
@@ -121,49 +112,48 @@ final class BidEscuchaManager: NSObject {
   }
 
   private func pararYEnviar() {
-  silenceTimer?.invalidate()
-  grabandoRespuesta = false
-  escuchandoWakeWord = true
-  onEstado("Procesando...")
+    silenceTimer?.invalidate()
+    grabandoRespuesta = false
+    escuchandoWakeWord = true
+    onEstado("Procesando...")
 
-  let url = FileManager.default.temporaryDirectory.appendingPathComponent("bid_wake.wav")
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("bid_wake.wav")
 
-  // Crear cabecera WAV válida + datos PCM
-  let sampleRate: UInt32 = 44100
-  let numChannels: UInt16 = 1
-  let bitsPerSample: UInt16 = 32
-  let dataSize = UInt32(grabacionBuffer.count)
-  let byteRate = sampleRate * UInt32(numChannels) * UInt32(bitsPerSample) / 8
-  let blockAlign = numChannels * bitsPerSample / 8
+    let sampleRate: UInt32 = 44100
+    let numChannels: UInt16 = 1
+    let bitsPerSample: UInt16 = 32
+    let dataSize = UInt32(grabacionBuffer.count)
+    let byteRate = sampleRate * UInt32(numChannels) * UInt32(bitsPerSample) / 8
+    let blockAlign = numChannels * bitsPerSample / 8
 
-  var header = Data()
-  header.append("RIFF".data(using: .ascii)!)
-  header.append(withUnsafeBytes(of: (36 + dataSize).littleEndian) { Data($0) })
-  header.append("WAVE".data(using: .ascii)!)
-  header.append("fmt ".data(using: .ascii)!)
-  header.append(withUnsafeBytes(of: UInt32(16).littleEndian) { Data($0) })
-  header.append(withUnsafeBytes(of: UInt16(3).littleEndian) { Data($0) }) // IEEE float
-  header.append(withUnsafeBytes(of: numChannels.littleEndian) { Data($0) })
-  header.append(withUnsafeBytes(of: sampleRate.littleEndian) { Data($0) })
-  header.append(withUnsafeBytes(of: byteRate.littleEndian) { Data($0) })
-  header.append(withUnsafeBytes(of: blockAlign.littleEndian) { Data($0) })
-  header.append(withUnsafeBytes(of: bitsPerSample.littleEndian) { Data($0) })
-  header.append("data".data(using: .ascii)!)
-  header.append(withUnsafeBytes(of: dataSize.littleEndian) { Data($0) })
+    var header = Data()
+    header.append("RIFF".data(using: .ascii)!)
+    header.append(withUnsafeBytes(of: (36 + dataSize).littleEndian) { Data($0) })
+    header.append("WAVE".data(using: .ascii)!)
+    header.append("fmt ".data(using: .ascii)!)
+    header.append(withUnsafeBytes(of: UInt32(16).littleEndian) { Data($0) })
+    header.append(withUnsafeBytes(of: UInt16(3).littleEndian) { Data($0) })
+    header.append(withUnsafeBytes(of: numChannels.littleEndian) { Data($0) })
+    header.append(withUnsafeBytes(of: sampleRate.littleEndian) { Data($0) })
+    header.append(withUnsafeBytes(of: byteRate.littleEndian) { Data($0) })
+    header.append(withUnsafeBytes(of: blockAlign.littleEndian) { Data($0) })
+    header.append(withUnsafeBytes(of: bitsPerSample.littleEndian) { Data($0) })
+    header.append("data".data(using: .ascii)!)
+    header.append(withUnsafeBytes(of: dataSize.littleEndian) { Data($0) })
 
-  var wavData = header
-  wavData.append(grabacionBuffer)
-  try? wavData.write(to: url)
+    var wavData = header
+    wavData.append(grabacionBuffer)
+    try? wavData.write(to: url)
 
-  Task {
-    guard let transcripcion = await transcribirAudio(url: url),
-          !transcripcion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-      DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciar() }
-      return
+    Task {
+      guard let transcripcion = await transcribirAudio(url: url),
+            !transcripcion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciar() }
+        return
+      }
+      await onPregunta(transcripcion)
     }
-    await onPregunta(transcripcion)
   }
-}
 
   private func transcribirAudio(url: URL) async -> String? {
     guard let audioData = try? Data(contentsOf: url) else { return nil }
