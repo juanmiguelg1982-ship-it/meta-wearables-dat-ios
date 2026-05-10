@@ -16,26 +16,15 @@ final class BidAudioPlayer: NSObject, @unchecked Sendable {
 
   private override init() {
     super.init()
+    try? AVAudioSession.sharedInstance().setCategory(
+      .playback,
+      mode: .default,
+      options: [.allowBluetooth]
+    )
+    try? AVAudioSession.sharedInstance().setActive(true)
   }
 
   func play(data: Data) {
-    let session = AVAudioSession.sharedInstance()
-    
-    // Verificar si las gafas están en la ruta de audio
-    let outputs = session.currentRoute.outputs
-    let tieneGafas = outputs.contains { 
-      $0.portType == .bluetoothA2DP || $0.portType == .bluetoothHFP 
-    }
-    
-    if tieneGafas {
-      // Gafas conectadas — usar playback con Bluetooth
-      try? session.setCategory(.playback, mode: .default, options: [.allowBluetooth])
-    } else {
-      // Sin gafas — usar altavoz normal
-      try? session.setCategory(.playback, mode: .default, options: [])
-    }
-    try? session.setActive(true)
-    
     do {
       player = try AVAudioPlayer(data: data)
       player?.prepareToPlay()
@@ -182,7 +171,6 @@ final class StreamSessionViewModel: ObservableObject {
       streamingStatus = .waiting
     case .streaming:
       streamingStatus = .streaming
-      NotificationCenter.default.post(name: NSNotification.Name("BIDStreamingActivo"), object: nil)
       await enviarMensajeABid(mensaje: "Streaming iniciado desde las gafas Ray-Ban Meta")
     }
   }
