@@ -153,6 +153,7 @@ final class StreamSessionViewModel: ObservableObject {
       currentVideoFrame = image
       if !hasReceivedFirstFrame {
         hasReceivedFirstFrame = true
+        print("BID: Enviando primer frame al servidor")
         Task { await enviarFrameABid(image: image) }
       }
     }
@@ -175,21 +176,34 @@ final class StreamSessionViewModel: ObservableObject {
   }
 
   private func enviarFrameABid(image: UIImage) async {
+    print("BID: Llamando a bidjuanmi.com/chat-stream")
     guard var components = URLComponents(string: "https://bidjuanmi.com/chat-stream") else { return }
-    components.queryItems = [URLQueryItem(name: "message", value: "Qué ves en esta imagen de mis gafas?")]
+    components.queryItems = [URLQueryItem(name: "message", value: "Que ves en esta imagen de mis gafas?")]
     guard let url = components.url else { return }
+    print("BID: URL = \(url)")
     var request = URLRequest(url: url)
     request.httpMethod = "GET"
-    _ = try? await URLSession.shared.data(for: request)
+    do {
+      let (_, response) = try await URLSession.shared.data(for: request)
+      print("BID: Respuesta = \(response)")
+    } catch {
+      print("BID: Error = \(error)")
+    }
   }
 
   private func enviarFotoABid(data: Data) async {
+    print("BID: Enviando foto a bidjuanmi.com/chat-stream")
     guard var components = URLComponents(string: "https://bidjuanmi.com/chat-stream") else { return }
     components.queryItems = [URLQueryItem(name: "message", value: "Foto capturada desde mis gafas Ray-Ban Meta")]
     guard let url = components.url else { return }
     var request = URLRequest(url: url)
     request.httpMethod = "GET"
-    _ = try? await URLSession.shared.data(for: request)
+    do {
+      let (_, response) = try await URLSession.shared.data(for: request)
+      print("BID: Respuesta foto = \(response)")
+    } catch {
+      print("BID: Error foto = \(error)")
+    }
   }
 
   private func showError(_ message: String) {
