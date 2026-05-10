@@ -1,29 +1,19 @@
-import AVFoundation
-import Foundation
-
-@MainActor
-final class BidAudioPlayer: NSObject {
+final class BidAudioPlayer: NSObject, @unchecked Sendable {
   static let shared = BidAudioPlayer()
-  private var player: AVAudioPlayer?
+  private var player: AVPlayer?
 
   private override init() {
     super.init()
-    // Usar altavoz de las gafas (auriculares Bluetooth)
-    try? AVAudioSession.sharedInstance().setCategory(
-      .playback,
-      mode: .default,
-      options: [.allowBluetooth]
-    )
-    try? AVAudioSession.sharedInstance().setActive(true)
   }
 
   func play(data: Data) {
-    do {
-      player = try AVAudioPlayer(data: data)
-      player?.prepareToPlay()
-      player?.play()
-    } catch {
-      print("BidAudioPlayer error: \(error)")
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("bid_response.mp3")
+    try? data.write(to: url)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+      let item = AVPlayerItem(url: url)
+      self.player = AVPlayer(playerItem: item)
+      self.player?.volume = 1.0
+      self.player?.play()
     }
   }
 }
