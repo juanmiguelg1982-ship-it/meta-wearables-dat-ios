@@ -1,4 +1,3 @@
-// WearablesViewModel.swift
 import AVFoundation
 import AudioToolbox
 import MWDATCore
@@ -18,7 +17,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private var grabacionURL: URL?
   private var audioRecorder: AVAudioRecorder?
 
-  // Instancia compartida para que BidAudioPlayer pueda pausar/reanudar
   static var instancia: BidEscuchaManager?
 
   static func pausarEngine() {
@@ -53,14 +51,9 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   }
 
   func reanudar() {
-  guard !grabandoRespuesta else { return }
-  DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-    self.iniciarEscucha()
-  }
-}
-    try? AVAudioSession.sharedInstance().setActive(true)
-    if !audioEngine.isRunning {
-      try? audioEngine.start()
+    guard !grabandoRespuesta else { return }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+      self.iniciarEscucha()
     }
   }
 
@@ -92,9 +85,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
           texto.hasSuffix("bid") || texto.contains("bid ") || texto == "bid" ||
           texto.hasSuffix("david") || texto.contains("david") ||
           texto.hasSuffix("vid") || texto.hasSuffix("bit") ||
-          texto.hasSuffix("beat") || texto.hasSuffix("vид") ||
-          texto.contains("oye bid") || texto.contains("hey bid") ||
-          texto.hasSuffix("pid") || texto.hasSuffix("lid")
+          texto.hasSuffix("beat") || texto.hasSuffix("pid") ||
+          texto.contains("oye bid") || texto.contains("hey bid")
         ) {
           DispatchQueue.main.async { self.wakeWordDetectado() }
         }
