@@ -16,14 +16,14 @@ final class BidAudioPlayer: NSObject, @unchecked Sendable {
   private var player: AVAudioPlayer?
 
   private override init() {
-  super.init()
-  try? AVAudioSession.sharedInstance().setCategory(
-    .playback,
-    mode: .default,
-    options: [.allowBluetoothHFP, .allowAirPlay]
-  )
-  try? AVAudioSession.sharedInstance().setActive(true)
-}
+    super.init()
+    try? AVAudioSession.sharedInstance().setCategory(
+      .playback,
+      mode: .default,
+      options: [.allowBluetoothHFP, .allowAirPlay]
+    )
+    try? AVAudioSession.sharedInstance().setActive(true)
+  }
 
   func play(data: Data) {
     do {
@@ -144,24 +144,16 @@ final class StreamSessionViewModel: ObservableObject {
 
   private func setupListeners(for stream: StreamSession) {
     stateListenerToken = stream.statePublisher.listen { [weak self] state in
-      Task { @MainActor in
-        await self?.handleStateChange(state)
-      }
+      Task { @MainActor in await self?.handleStateChange(state) }
     }
     videoFrameListenerToken = stream.videoFramePublisher.listen { [weak self] frame in
-      Task { @MainActor in
-        await self?.handleVideoFrame(frame)
-      }
+      Task { @MainActor in await self?.handleVideoFrame(frame) }
     }
     errorListenerToken = stream.errorPublisher.listen { [weak self] error in
-      Task { @MainActor in
-        await self?.handleError(error)
-      }
+      Task { @MainActor in await self?.handleError(error) }
     }
     photoDataListenerToken = stream.photoDataPublisher.listen { [weak self] data in
-      Task { @MainActor in
-        await self?.handlePhotoData(data)
-      }
+      Task { @MainActor in await self?.handlePhotoData(data) }
     }
   }
 
@@ -206,9 +198,7 @@ final class StreamSessionViewModel: ObservableObject {
 
   func handleError(_ error: StreamSessionError) async {
     let message = formatError(error)
-    if message != errorMessage {
-      showErrorMsg(message)
-    }
+    if message != errorMessage { showErrorMsg(message) }
   }
 
   // MARK: - BID
@@ -226,18 +216,12 @@ final class StreamSessionViewModel: ObservableObject {
           let json = String(line.dropFirst(6))
           if let data = json.data(using: .utf8),
              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            if let texto = obj["text"] as? String {
-              textoCompleto += texto
-            }
-            if let done = obj["done"] as? Bool, done {
-              break
-            }
+            if let texto = obj["text"] as? String { textoCompleto += texto }
+            if let done = obj["done"] as? Bool, done { break }
           }
         }
       }
-    } catch {
-      return
-    }
+    } catch { return }
 
     if !textoCompleto.isEmpty {
       await reproducirAudio(texto: textoCompleto)
@@ -251,9 +235,7 @@ final class StreamSessionViewModel: ObservableObject {
     do {
       let (data, _) = try await URLSession.shared.data(from: url)
       BidAudioPlayer.shared.play(data: data)
-    } catch {
-      return
-    }
+    } catch { return }
   }
 
   func showErrorMsg(_ message: String) {
@@ -263,24 +245,15 @@ final class StreamSessionViewModel: ObservableObject {
 
   private func formatError(_ error: StreamSessionError) -> String {
     switch error {
-    case .internalError:
-      return "An internal error occurred. Please try again."
-    case .deviceNotFound:
-      return "Device not found. Please ensure your device is connected."
-    case .deviceNotConnected:
-      return "Device not connected. Please check your connection and try again."
-    case .timeout:
-      return "The operation timed out. Please try again."
-    case .videoStreamingError:
-      return "Video streaming failed. Please try again."
-    case .permissionDenied:
-      return "Camera permission denied. Please grant permission in Settings."
-    case .hingesClosed:
-      return "The hinges on the glasses were closed. Please open the hinges and try again."
-    case .thermalCritical:
-      return "Device is overheating. Streaming has been paused to protect the device."
-    @unknown default:
-      return "An unknown streaming error occurred."
+    case .internalError: return "An internal error occurred. Please try again."
+    case .deviceNotFound: return "Device not found. Please ensure your device is connected."
+    case .deviceNotConnected: return "Device not connected. Please check your connection and try again."
+    case .timeout: return "The operation timed out. Please try again."
+    case .videoStreamingError: return "Video streaming failed. Please try again."
+    case .permissionDenied: return "Camera permission denied. Please grant permission in Settings."
+    case .hingesClosed: return "The hinges on the glasses were closed. Please open the hinges and try again."
+    case .thermalCritical: return "Device is overheating. Streaming has been paused to protect the device."
+    @unknown default: return "An unknown streaming error occurred."
     }
   }
 }
