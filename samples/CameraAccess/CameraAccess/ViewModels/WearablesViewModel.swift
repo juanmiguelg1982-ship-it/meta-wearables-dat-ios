@@ -4,8 +4,6 @@ import MWDATCore
 import Speech
 import SwiftUI
 
-// MARK: - BidEscuchaManager
-
 final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private let onEstado: (String) -> Void
   private let onPregunta: (String) async -> Void
@@ -13,10 +11,12 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private var speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
   private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
   private var recognitionTask: SFSpeechRecognitionTask?
+  private var audioEngine = AVAudioEngine()
   private var grabandoRespuesta = false
   private var silenceTimer: Timer?
   private var grabacionURL: URL?
   private var audioRecorder: AVAudioRecorder?
+  private var engineActivo = false
 
   init(onEstado: @escaping (String) -> Void, onPregunta: @escaping (String) async -> Void) {
     self.onEstado = onEstado
@@ -28,16 +28,30 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   func arrancar() {
     SFSpeechRecognizer.requestAuthorization { [weak self] status in
       guard status == .authorized else { return }
-      DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-        self?.iniciarEscucha()
+      // Esperar notificación del streaming
+      NotificationCenter.default.addObserver(
+        forName: NSNotification.Name("BIDStreamingActivo"),
+        object: nil,
+        queue: .main
+      ) { [weak self] _ in
+        guard self?.engineActivo == false else { return }
+        self?.engineActivo = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+          self?.iniciarEscucha()
+        }
       }
+      self?.onEstado("Activa el streaming para hablar con BID")
     }
   }
 
   private func iniciarEscucha() {
     recognitionTask?.cancel()
     recognitionTask = nil
-    recognitionRequest = nil
+
+    if audioEngine.isRunning {
+      audioEngine.inputNode.removeTap(onBus: 0)
+      audioEngine.stop()
+    }
 
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
     guard let recognitionRequest = recognitionRequest else { return }
@@ -62,7 +76,24 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
       }
     }
 
-    onEstado("Escuchando... di BID")
+    let inputNode = audioEngine.inputNode
+    let formato = inputNode.outputFormat(forBus: 0)
+
+    guard formato.sampleRate > 0 else {
+      onEstado("Error formato audio")
+      return
+    }
+
+    inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
+      self?.recognitionRequest?.append(buffer)
+    }
+
+    do {
+      try audioEngine.start()
+      onEstado("Escuchando... di BID")
+    } catch {
+      onEstado("Error audio: \(error.localizedDescription)")
+    }
   }
 
   private func wakeWordDetectado() {
@@ -129,8 +160,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     return texto
   }
 }
-
-// MARK: - WearablesViewModel
 
 @MainActor
 class WearablesViewModel: ObservableObject {
