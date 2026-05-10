@@ -16,7 +16,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private var silenceTimer: Timer?
   private var grabacionURL: URL?
   private var audioRecorder: AVAudioRecorder?
-  private var engineActivo = false
 
   init(onEstado: @escaping (String) -> Void, onPregunta: @escaping (String) async -> Void) {
     self.onEstado = onEstado
@@ -28,19 +27,9 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   func arrancar() {
     SFSpeechRecognizer.requestAuthorization { [weak self] status in
       guard status == .authorized else { return }
-      // Esperar notificación del streaming
-      NotificationCenter.default.addObserver(
-        forName: NSNotification.Name("BIDStreamingActivo"),
-        object: nil,
-        queue: .main
-      ) { [weak self] _ in
-        guard self?.engineActivo == false else { return }
-        self?.engineActivo = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-          self?.iniciarEscucha()
-        }
+      DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        self?.iniciarEscucha()
       }
-      self?.onEstado("Activa el streaming para hablar con BID")
     }
   }
 
@@ -92,7 +81,10 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
       try audioEngine.start()
       onEstado("Escuchando... di BID")
     } catch {
-      onEstado("Error audio: \(error.localizedDescription)")
+      onEstado("Error: \(error.localizedDescription)")
+      DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+        self.iniciarEscucha()
+      }
     }
   }
 
@@ -101,6 +93,12 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     grabandoRespuesta = true
     onEstado("🎤 Escuchando pregunta...")
     AudioServicesPlaySystemSound(1057)
+
+    // Parar engine para liberar audio
+    if audioEngine.isRunning {
+      audioEngine.inputNode.removeTap(onBus: 0)
+      audioEngine.stop()
+    }
 
     let url = FileManager.default.temporaryDirectory.appendingPathComponent("bid_pregunta.m4a")
     grabacionURL = url
@@ -137,7 +135,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         return
       }
       await onPregunta(transcripcion)
-      DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciarEscucha() }
+      DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { self.iniciarEscucha() }
     }
   }
 
