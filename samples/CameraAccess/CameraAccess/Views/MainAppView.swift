@@ -14,6 +14,9 @@ struct MainAppView: View {
     ZStack(alignment: .top) {
       if viewModel.registrationState == .registered {
         StreamSessionView(wearables: wearables, wearablesVM: viewModel)
+          .onAppear {
+            viewModel.arrancarEscucha()
+          }
       } else {
         HomeScreenView(viewModel: viewModel)
       }
