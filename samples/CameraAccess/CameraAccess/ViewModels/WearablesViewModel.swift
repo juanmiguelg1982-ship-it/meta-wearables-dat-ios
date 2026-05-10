@@ -6,104 +6,94 @@ import SwiftUI
 
 // MARK: - BidEscuchaManager
 
-final class BidEscuchaManager: NSObject {
+final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private let onEstado: (String) -> Void
   private let onPregunta: (String) async -> Void
 
-  private var speechRecognizer: SFSpeechRecognizer?
+  private var speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
   private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
   private var recognitionTask: SFSpeechRecognitionTask?
-  private var audioEngine = AVAudioEngine()
-  private var escuchandoWakeWord = true
   private var grabandoRespuesta = false
   private var silenceTimer: Timer?
-  private var grabacionBuffer = Data()
+  private var grabacionURL: URL?
+  private var audioRecorder: AVAudioRecorder?
 
   init(onEstado: @escaping (String) -> Void, onPregunta: @escaping (String) async -> Void) {
     self.onEstado = onEstado
     self.onPregunta = onPregunta
     super.init()
+    speechRecognizer?.delegate = self
   }
 
   func arrancar() {
     SFSpeechRecognizer.requestAuthorization { [weak self] status in
       guard status == .authorized else { return }
-      AVAudioSession.sharedInstance().requestRecordPermission { [weak self] granted in
-        guard granted else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
-          self?.iniciar()
-        }
+      DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        self?.iniciarEscucha()
       }
     }
   }
 
-  private func iniciar() {
-    parar()
-    speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
+  private func iniciarEscucha() {
+    recognitionTask?.cancel()
+    recognitionTask = nil
+    recognitionRequest = nil
 
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
     guard let recognitionRequest = recognitionRequest else { return }
     recognitionRequest.shouldReportPartialResults = true
 
-    let inputNode = audioEngine.inputNode
-    let formato = inputNode.outputFormat(forBus: 0)
-
-    guard formato.sampleRate > 0 else {
-      onEstado("Error: formato inválido")
-      DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { self.iniciar() }
-      return
-    }
-
     recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { [weak self] result, error in
       guard let self = self else { return }
+
       if let result = result {
         let texto = result.bestTranscription.formattedString.lowercased()
-        if self.escuchandoWakeWord && (
+        if !self.grabandoRespuesta && (
           texto.hasSuffix("bid") || texto.contains("bid ") || texto == "bid" ||
-          texto.hasSuffix("david") || texto.contains("david ") || texto == "david" ||
-          texto.hasSuffix("vid") || texto.hasSuffix("bit") || texto.hasSuffix("beat")
+          texto.hasSuffix("david") || texto.contains("david") ||
+          texto.hasSuffix("vid") || texto.hasSuffix("bit")
         ) {
           DispatchQueue.main.async { self.wakeWordDetectado() }
         }
       }
-      if error != nil && !self.grabandoRespuesta {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self.iniciar() }
-      }
-    }
 
-    inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
-      self?.recognitionRequest?.append(buffer)
-      guard self?.grabandoRespuesta == true else { return }
-      let channelData = buffer.floatChannelData?[0]
-      let frameLength = Int(buffer.frameLength)
-      if let channelData = channelData {
-        var bytes = [UInt8](repeating: 0, count: frameLength * 4)
-        for i in 0..<frameLength {
-          withUnsafeBytes(of: channelData[i]) { ptr in
-            bytes[i*4..<i*4+4] = ArraySlice(ptr)
-          }
+      if error != nil {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+          self.iniciarEscucha()
         }
-        self?.grabacionBuffer.append(contentsOf: bytes)
       }
     }
 
-    do {
-      try audioEngine.start()
-      escuchandoWakeWord = true
-      onEstado("Escuchando... di BID")
-    } catch {
-      onEstado("Error: \(error.localizedDescription)")
-      DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { self.iniciar() }
+    // Usar AVAudioSession del sistema SIN modificarla
+    let inputNode = AVAudioEngine().inputNode
+    let formato = inputNode.outputFormat(forBus: 0)
+    inputNode.installTap(onBus: 0, bufferSize: 4096, format: formato) { [weak self] buffer, _ in
+      self?.recognitionRequest?.append(buffer)
     }
+
+    onEstado("Escuchando... di BID")
   }
 
   private func wakeWordDetectado() {
     guard !grabandoRespuesta else { return }
     grabandoRespuesta = true
-    escuchandoWakeWord = false
-    grabacionBuffer = Data()
     onEstado("🎤 Escuchando pregunta...")
     AudioServicesPlaySystemSound(1057)
+
+    // Grabar con AVAudioRecorder que no interfiere con el SDK
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("bid_pregunta.m4a")
+    grabacionURL = url
+
+    let settings: [String: Any] = [
+      AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+      AVSampleRateKey: 44100,
+      AVNumberOfChannelsKey: 1,
+      AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue
+    ]
+
+    audioRecorder = try? AVAudioRecorder(url: url, settings: settings)
+    audioRecorder?.record()
+
     silenceTimer?.invalidate()
     silenceTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
       self?.pararYEnviar()
@@ -112,46 +102,21 @@ final class BidEscuchaManager: NSObject {
 
   private func pararYEnviar() {
     silenceTimer?.invalidate()
+    audioRecorder?.stop()
+    audioRecorder = nil
     grabandoRespuesta = false
-    escuchandoWakeWord = true
     onEstado("Procesando...")
 
-    let url = FileManager.default.temporaryDirectory.appendingPathComponent("bid_wake.wav")
-
-    // Sample rate real del audioEngine
-    let sampleRate = UInt32(audioEngine.inputNode.outputFormat(forBus: 0).sampleRate)
-    let numChannels: UInt16 = 1
-    let bitsPerSample: UInt16 = 32
-    let dataSize = UInt32(grabacionBuffer.count)
-    let byteRate = sampleRate * UInt32(numChannels) * UInt32(bitsPerSample) / 8
-    let blockAlign = numChannels * bitsPerSample / 8
-
-    var header = Data()
-    header.append("RIFF".data(using: .ascii)!)
-    header.append(withUnsafeBytes(of: (36 + dataSize).littleEndian) { Data($0) })
-    header.append("WAVE".data(using: .ascii)!)
-    header.append("fmt ".data(using: .ascii)!)
-    header.append(withUnsafeBytes(of: UInt32(16).littleEndian) { Data($0) })
-    header.append(withUnsafeBytes(of: UInt16(3).littleEndian) { Data($0) })
-    header.append(withUnsafeBytes(of: numChannels.littleEndian) { Data($0) })
-    header.append(withUnsafeBytes(of: sampleRate.littleEndian) { Data($0) })
-    header.append(withUnsafeBytes(of: byteRate.littleEndian) { Data($0) })
-    header.append(withUnsafeBytes(of: blockAlign.littleEndian) { Data($0) })
-    header.append(withUnsafeBytes(of: bitsPerSample.littleEndian) { Data($0) })
-    header.append("data".data(using: .ascii)!)
-    header.append(withUnsafeBytes(of: dataSize.littleEndian) { Data($0) })
-
-    var wavData = header
-    wavData.append(grabacionBuffer)
-    try? wavData.write(to: url)
+    guard let url = grabacionURL else { return }
 
     Task {
       guard let transcripcion = await transcribirAudio(url: url),
             !transcripcion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciar() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciarEscucha() }
         return
       }
       await onPregunta(transcripcion)
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciarEscucha() }
     }
   }
 
@@ -163,8 +128,8 @@ final class BidEscuchaManager: NSObject {
     request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
     var body = Data()
     body.append("--\(boundary)\r\n".data(using: .utf8)!)
-    body.append("Content-Disposition: form-data; name=\"audio_file\"; filename=\"audio.wav\"\r\n".data(using: .utf8)!)
-    body.append("Content-Type: audio/wav\r\n\r\n".data(using: .utf8)!)
+    body.append("Content-Disposition: form-data; name=\"audio_file\"; filename=\"audio.m4a\"\r\n".data(using: .utf8)!)
+    body.append("Content-Type: audio/m4a\r\n\r\n".data(using: .utf8)!)
     body.append(audioData)
     body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
     request.httpBody = body
@@ -172,17 +137,6 @@ final class BidEscuchaManager: NSObject {
           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
           let texto = json["text"] as? String else { return nil }
     return texto
-  }
-
-  private func parar() {
-    if audioEngine.isRunning {
-      audioEngine.inputNode.removeTap(onBus: 0)
-      audioEngine.stop()
-    }
-    recognitionRequest?.endAudio()
-    recognitionRequest = nil
-    recognitionTask?.cancel()
-    recognitionTask = nil
   }
 }
 
