@@ -121,21 +121,49 @@ final class BidEscuchaManager: NSObject {
   }
 
   private func pararYEnviar() {
-    silenceTimer?.invalidate()
-    grabandoRespuesta = false
-    escuchandoWakeWord = true
-    onEstado("Procesando...")
-    let url = FileManager.default.temporaryDirectory.appendingPathComponent("bid_wake.wav")
-    try? grabacionBuffer.write(to: url)
-    Task {
-      guard let transcripcion = await transcribirAudio(url: url),
-            !transcripcion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciar() }
-        return
-      }
-      await onPregunta(transcripcion)
+  silenceTimer?.invalidate()
+  grabandoRespuesta = false
+  escuchandoWakeWord = true
+  onEstado("Procesando...")
+
+  let url = FileManager.default.temporaryDirectory.appendingPathComponent("bid_wake.wav")
+
+  // Crear cabecera WAV válida + datos PCM
+  let sampleRate: UInt32 = 44100
+  let numChannels: UInt16 = 1
+  let bitsPerSample: UInt16 = 32
+  let dataSize = UInt32(grabacionBuffer.count)
+  let byteRate = sampleRate * UInt32(numChannels) * UInt32(bitsPerSample) / 8
+  let blockAlign = numChannels * bitsPerSample / 8
+
+  var header = Data()
+  header.append("RIFF".data(using: .ascii)!)
+  header.append(withUnsafeBytes(of: (36 + dataSize).littleEndian) { Data($0) })
+  header.append("WAVE".data(using: .ascii)!)
+  header.append("fmt ".data(using: .ascii)!)
+  header.append(withUnsafeBytes(of: UInt32(16).littleEndian) { Data($0) })
+  header.append(withUnsafeBytes(of: UInt16(3).littleEndian) { Data($0) }) // IEEE float
+  header.append(withUnsafeBytes(of: numChannels.littleEndian) { Data($0) })
+  header.append(withUnsafeBytes(of: sampleRate.littleEndian) { Data($0) })
+  header.append(withUnsafeBytes(of: byteRate.littleEndian) { Data($0) })
+  header.append(withUnsafeBytes(of: blockAlign.littleEndian) { Data($0) })
+  header.append(withUnsafeBytes(of: bitsPerSample.littleEndian) { Data($0) })
+  header.append("data".data(using: .ascii)!)
+  header.append(withUnsafeBytes(of: dataSize.littleEndian) { Data($0) })
+
+  var wavData = header
+  wavData.append(grabacionBuffer)
+  try? wavData.write(to: url)
+
+  Task {
+    guard let transcripcion = await transcribirAudio(url: url),
+          !transcripcion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciar() }
+      return
     }
+    await onPregunta(transcripcion)
   }
+}
 
   private func transcribirAudio(url: URL) async -> String? {
     guard let audioData = try? Data(contentsOf: url) else { return nil }
