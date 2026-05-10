@@ -1,270 +1,331 @@
-// StreamSessionViewModel.swift
+// WearablesViewModel.swift
 import AVFoundation
-import Combine
-import MWDATCamera
+import AudioToolbox
 import MWDATCore
+import Speech
 import SwiftUI
 
-enum StreamingStatus {
-  case streaming
-  case waiting
-  case stopped
-}
+final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
+  private let onEstado: (String) -> Void
+  private let onPregunta: (String) async -> Void
 
-final class BidAudioPlayer: NSObject, @unchecked Sendable {
-  static let shared = BidAudioPlayer()
-  private var player: AVAudioPlayer?
+  private var speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
+  private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+  private var recognitionTask: SFSpeechRecognitionTask?
+  private var audioEngine = AVAudioEngine()
+  private var grabandoRespuesta = false
+  private var silenceTimer: Timer?
+  private var grabacionURL: URL?
+  private var audioRecorder: AVAudioRecorder?
 
-  private override init() {
-    super.init()
+  // Instancia compartida para que BidAudioPlayer pueda pausar/reanudar
+  static var instancia: BidEscuchaManager?
+
+  static func pausarEngine() {
+    instancia?.pausar()
   }
 
-  func play(data: Data) {
-    // Pausar el engine de escucha
-    BidEscuchaManager.pausarEngine()
+  static func reanudarEngine() {
+    instancia?.reanudar()
+  }
+
+  init(onEstado: @escaping (String) -> Void, onPregunta: @escaping (String) async -> Void) {
+    self.onEstado = onEstado
+    self.onPregunta = onPregunta
+    super.init()
+    speechRecognizer?.delegate = self
+    BidEscuchaManager.instancia = self
+  }
+
+  func arrancar() {
+    SFSpeechRecognizer.requestAuthorization { [weak self] status in
+      guard status == .authorized else { return }
+      DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        self?.iniciarEscucha()
+      }
+    }
+  }
+
+  func pausar() {
+    if audioEngine.isRunning {
+      audioEngine.pause()
+    }
+  }
+
+  func reanudar() {
+    guard !grabandoRespuesta else { return }
+    try? AVAudioSession.sharedInstance().setCategory(
+      .record,
+      mode: .default,
+      options: [.allowBluetooth]
+    )
+    try? AVAudioSession.sharedInstance().setActive(true)
+    if !audioEngine.isRunning {
+      try? audioEngine.start()
+    }
+  }
+
+  private func iniciarEscucha() {
+    recognitionTask?.cancel()
+    recognitionTask = nil
+
+    if audioEngine.isRunning {
+      audioEngine.inputNode.removeTap(onBus: 0)
+      audioEngine.stop()
+    }
 
     try? AVAudioSession.sharedInstance().setCategory(
-      .playback,
+      .record,
       mode: .default,
       options: [.allowBluetooth]
     )
     try? AVAudioSession.sharedInstance().setActive(true)
 
+    recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+    guard let recognitionRequest = recognitionRequest else { return }
+    recognitionRequest.shouldReportPartialResults = true
+
+    recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { [weak self] result, error in
+      guard let self = self else { return }
+      if let result = result {
+        let texto = result.bestTranscription.formattedString.lowercased()
+        if !self.grabandoRespuesta && (
+          texto.hasSuffix("bid") || texto.contains("bid ") || texto == "bid" ||
+          texto.hasSuffix("david") || texto.contains("david") ||
+          texto.hasSuffix("vid") || texto.hasSuffix("bit")
+        ) {
+          DispatchQueue.main.async { self.wakeWordDetectado() }
+        }
+      }
+      if error != nil {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+          self.iniciarEscucha()
+        }
+      }
+    }
+
+    let inputNode = audioEngine.inputNode
+    let formato = inputNode.outputFormat(forBus: 0)
+
+    guard formato.sampleRate > 0 else {
+      onEstado("Error formato audio")
+      return
+    }
+
+    inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
+      self?.recognitionRequest?.append(buffer)
+    }
+
     do {
-      player = try AVAudioPlayer(data: data)
-      player?.delegate = self
-      player?.prepareToPlay()
-      player?.play()
+      try audioEngine.start()
+      onEstado("Escuchando... di BID")
     } catch {
-      BidEscuchaManager.reanudarEngine()
+      onEstado("Error: \(error.localizedDescription)")
+      DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+        self.iniciarEscucha()
+      }
     }
   }
-}
 
-extension BidAudioPlayer: AVAudioPlayerDelegate {
-  func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-    // Reanudar escucha cuando termina el audio
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-      BidEscuchaManager.reanudarEngine()
+  private func wakeWordDetectado() {
+    guard !grabandoRespuesta else { return }
+    grabandoRespuesta = true
+    onEstado("🎤 Escuchando pregunta...")
+    AudioServicesPlaySystemSound(1057)
+
+    if audioEngine.isRunning {
+      audioEngine.inputNode.removeTap(onBus: 0)
+      audioEngine.stop()
     }
+
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("bid_pregunta.m4a")
+    grabacionURL = url
+
+    let settings: [String: Any] = [
+      AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+      AVSampleRateKey: 44100,
+      AVNumberOfChannelsKey: 1,
+      AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue
+    ]
+
+    audioRecorder = try? AVAudioRecorder(url: url, settings: settings)
+    audioRecorder?.record()
+
+    silenceTimer?.invalidate()
+    silenceTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
+      self?.pararYEnviar()
+    }
+  }
+
+  private func pararYEnviar() {
+    silenceTimer?.invalidate()
+    audioRecorder?.stop()
+    audioRecorder = nil
+    grabandoRespuesta = false
+    onEstado("Procesando...")
+
+    guard let url = grabacionURL else { return }
+
+    Task {
+      guard let transcripcion = await transcribirAudio(url: url),
+            !transcripcion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciarEscucha() }
+        return
+      }
+      await onPregunta(transcripcion)
+      DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { self.iniciarEscucha() }
+    }
+  }
+
+  private func transcribirAudio(url: URL) async -> String? {
+    guard let audioData = try? Data(contentsOf: url) else { return nil }
+    var request = URLRequest(url: URL(string: "https://bidjuanmi.com/whisper")!)
+    request.httpMethod = "POST"
+    let boundary = "Boundary-\(UUID().uuidString)"
+    request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+    var body = Data()
+    body.append("--\(boundary)\r\n".data(using: .utf8)!)
+    body.append("Content-Disposition: form-data; name=\"audio_file\"; filename=\"audio.m4a\"\r\n".data(using: .utf8)!)
+    body.append("Content-Type: audio/m4a\r\n\r\n".data(using: .utf8)!)
+    body.append(audioData)
+    body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+    request.httpBody = body
+    guard let (data, _) = try? await URLSession.shared.data(for: request),
+          let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+          let texto = json["text"] as? String else { return nil }
+    return texto
   }
 }
 
 @MainActor
-final class StreamSessionViewModel: ObservableObject {
-  @Published var currentVideoFrame: UIImage?
-  @Published var hasReceivedFirstFrame: Bool = false
-  @Published var streamingStatus: StreamingStatus = .stopped
+class WearablesViewModel: ObservableObject {
+  @Published var devices: [DeviceIdentifier]
+  @Published var registrationState: RegistrationState
+  @Published var showGettingStartedSheet: Bool = false
   @Published var showError: Bool = false
   @Published var errorMessage: String = ""
-  @Published var capturedPhoto: UIImage?
-  @Published var showPhotoPreview: Bool = false
-  @Published var showPhotoCaptureError: Bool = false
-  @Published var isCapturingPhoto: Bool = false
-  @Published var hasActiveDevice: Bool = false
-  @Published var isDeviceSessionReady: Bool = false
+  @Published var bidStatus: String = "Iniciando..."
 
-  var isStreaming: Bool { streamingStatus != .stopped }
-
-  private let sessionManager: DeviceSessionManager
+  private var registrationTask: Task<Void, Never>?
+  private var deviceStreamTask: Task<Void, Never>?
+  private var setupDeviceStreamTask: Task<Void, Never>?
   private let wearables: WearablesInterface
-  private var streamSession: StreamSession?
-  private var cancellables = Set<AnyCancellable>()
-  private var stateListenerToken: AnyListenerToken?
-  private var videoFrameListenerToken: AnyListenerToken?
-  private var errorListenerToken: AnyListenerToken?
-  private var photoDataListenerToken: AnyListenerToken?
+  private var compatibilityListenerTokens: [DeviceIdentifier: AnyListenerToken] = [:]
+  private var bidEscucha: BidEscuchaManager?
 
   init(wearables: WearablesInterface) {
     self.wearables = wearables
-    self.sessionManager = DeviceSessionManager(wearables: wearables)
-    sessionManager.$hasActiveDevice
-      .receive(on: DispatchQueue.main)
-      .assign(to: &$hasActiveDevice)
-    sessionManager.$isReady
-      .receive(on: DispatchQueue.main)
-      .assign(to: &$isDeviceSessionReady)
-  }
+    self.devices = wearables.devices
+    self.registrationState = wearables.registrationState
 
-  func handleStartStreaming() async {
-    let permission = Permission.camera
-    do {
-      var status = try await wearables.checkPermissionStatus(permission)
-      if status != .granted {
-        status = try await wearables.requestPermission(permission)
+    setupDeviceStreamTask = Task { await setupDeviceStream() }
+
+    registrationTask = Task {
+      for await registrationState in wearables.registrationStateStream() {
+        let previousState = self.registrationState
+        self.registrationState = registrationState
+        if self.showGettingStartedSheet == false && registrationState == .registered && previousState == .registering {
+          self.showGettingStartedSheet = true
+        }
       }
-      guard status == .granted else {
-        showErrorMsg("Permission denied")
+    }
+
+    Task {
+      bidStatus = "Conectando..."
+      guard let url = URL(string: "https://bidjuanmi.com/chat-stream?message=AppArranc%C3%B3") else {
+        bidStatus = "Error: URL invalida"
         return
       }
-      await startSession()
-    } catch {
-      showErrorMsg("Permission error: \(error.description)")
+      do {
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 10
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let http = response as? HTTPURLResponse
+        bidStatus = "OK \(http?.statusCode ?? 0) - \(data.count) bytes"
+      } catch {
+        bidStatus = "Error: \(error.localizedDescription)"
+      }
     }
   }
 
-  func stopSession() async {
-    guard let stream = streamSession else { return }
-    streamSession = nil
-    clearListeners()
-    streamingStatus = .stopped
-    currentVideoFrame = nil
-    hasReceivedFirstFrame = false
-    await stream.stop()
+  deinit {
+    registrationTask?.cancel()
+    deviceStreamTask?.cancel()
+    setupDeviceStreamTask?.cancel()
   }
 
-  func capturePhoto() {
-    guard !isCapturingPhoto, streamingStatus == .streaming else {
-      showPhotoCaptureError = true
-      return
+  func arrancarEscucha() {
+    guard bidEscucha == nil else { return }
+    bidEscucha = BidEscuchaManager { [weak self] estado in
+      Task { @MainActor in self?.bidStatus = estado }
+    } onPregunta: { [weak self] (texto: String) in
+      guard let self = self else { return }
+      await MainActor.run { self.bidStatus = "Tú: \(texto)" }
+      let vm = StreamSessionViewModel(wearables: self.wearables)
+      await vm.enviarMensajeABid(mensaje: texto)
+      await MainActor.run { self.bidStatus = "Escuchando... di BID" }
     }
-    isCapturingPhoto = true
-    let success = streamSession?.capturePhoto(format: .jpeg) ?? false
-    if !success {
-      isCapturingPhoto = false
-      showPhotoCaptureError = true
+    bidEscucha?.arrancar()
+  }
+
+  private func setupDeviceStream() async {
+    if let task = deviceStreamTask, !task.isCancelled { task.cancel() }
+    deviceStreamTask = Task {
+      for await devices in wearables.devicesStream() {
+        self.devices = devices
+        monitorDeviceCompatibility(devices: devices)
+      }
     }
+  }
+
+  private func monitorDeviceCompatibility(devices: [DeviceIdentifier]) {
+    let deviceSet = Set(devices)
+    compatibilityListenerTokens = compatibilityListenerTokens.filter { deviceSet.contains($0.key) }
+    for deviceId in devices {
+      guard compatibilityListenerTokens[deviceId] == nil else { continue }
+      guard let device = wearables.deviceForIdentifier(deviceId) else { continue }
+      let deviceName = device.nameOrId()
+      let token = device.addCompatibilityListener { [weak self] compatibility in
+        guard let self else { return }
+        if compatibility == .deviceUpdateRequired {
+          Task { @MainActor in self.showError("Device '\(deviceName)' requires an update to work with this app") }
+        }
+      }
+      compatibilityListenerTokens[deviceId] = token
+    }
+  }
+
+  func connectGlasses() {
+    guard registrationState != .registering else { return }
+    Task { @MainActor in
+      do {
+        try await wearables.startRegistration()
+      } catch let error as RegistrationError {
+        showError(error.description)
+      } catch {
+        showError(error.localizedDescription)
+      }
+    }
+  }
+
+  func disconnectGlasses() {
+    Task { @MainActor in
+      do {
+        try await wearables.startUnregistration()
+      } catch let error as UnregistrationError {
+        showError(error.description)
+      } catch {
+        showError(error.localizedDescription)
+      }
+    }
+  }
+
+  func showError(_ error: String) {
+    errorMessage = error
+    showError = true
   }
 
   func dismissError() {
     showError = false
-    errorMessage = ""
-  }
-
-  func dismissPhotoCaptureError() {
-    showPhotoCaptureError = false
-  }
-
-  func dismissPhotoPreview() {
-    showPhotoPreview = false
-    capturedPhoto = nil
-  }
-
-  private func startSession() async {
-    guard let deviceSession = await sessionManager.getSession() else { return }
-    guard deviceSession.state == .started else { return }
-    let config = StreamSessionConfig(
-      videoCodec: VideoCodec.raw,
-      resolution: StreamingResolution.low,
-      frameRate: 24
-    )
-    guard let stream = try? deviceSession.addStream(config: config) else { return }
-    streamSession = stream
-    streamingStatus = .waiting
-    setupListeners(for: stream)
-    await stream.start()
-  }
-
-  private func setupListeners(for stream: StreamSession) {
-    stateListenerToken = stream.statePublisher.listen { [weak self] state in
-      Task { @MainActor in await self?.handleStateChange(state) }
-    }
-    videoFrameListenerToken = stream.videoFramePublisher.listen { [weak self] frame in
-      Task { @MainActor in await self?.handleVideoFrame(frame) }
-    }
-    errorListenerToken = stream.errorPublisher.listen { [weak self] error in
-      Task { @MainActor in await self?.handleError(error) }
-    }
-    photoDataListenerToken = stream.photoDataPublisher.listen { [weak self] data in
-      Task { @MainActor in await self?.handlePhotoData(data) }
-    }
-  }
-
-  private func clearListeners() {
-    stateListenerToken = nil
-    videoFrameListenerToken = nil
-    errorListenerToken = nil
-    photoDataListenerToken = nil
-  }
-
-  func handleStateChange(_ state: StreamSessionState) async {
-    switch state {
-    case .stopped:
-      currentVideoFrame = nil
-      streamingStatus = .stopped
-    case .waitingForDevice, .starting, .stopping, .paused:
-      streamingStatus = .waiting
-    case .streaming:
-      streamingStatus = .streaming
-      await enviarMensajeABid(mensaje: "Streaming iniciado desde las gafas Ray-Ban Meta")
-    }
-  }
-
-  func handleVideoFrame(_ frame: VideoFrame) async {
-    if let image = frame.makeUIImage() {
-      currentVideoFrame = image
-      if !hasReceivedFirstFrame {
-        hasReceivedFirstFrame = true
-        await enviarMensajeABid(mensaje: "Que ves en esta imagen de mis gafas?")
-      }
-    }
-  }
-
-  func handlePhotoData(_ data: PhotoData) async {
-    isCapturingPhoto = false
-    if let image = UIImage(data: data.data) {
-      capturedPhoto = image
-      showPhotoPreview = true
-      await enviarMensajeABid(mensaje: "Foto capturada desde mis gafas Ray-Ban Meta")
-    }
-  }
-
-  func handleError(_ error: StreamSessionError) async {
-    let message = formatError(error)
-    if message != errorMessage { showErrorMsg(message) }
-  }
-
-  func enviarMensajeABid(mensaje: String) async {
-    guard var components = URLComponents(string: "https://bidjuanmi.com/chat-stream") else { return }
-    components.queryItems = [URLQueryItem(name: "message", value: mensaje)]
-    guard let url = components.url else { return }
-
-    var textoCompleto = ""
-    do {
-      let (asyncBytes, _) = try await URLSession.shared.bytes(from: url)
-      for try await line in asyncBytes.lines {
-        if line.hasPrefix("data: ") {
-          let json = String(line.dropFirst(6))
-          if let data = json.data(using: .utf8),
-             let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            if let texto = obj["text"] as? String { textoCompleto += texto }
-            if let done = obj["done"] as? Bool, done { break }
-          }
-        }
-      }
-    } catch { return }
-
-    if !textoCompleto.isEmpty {
-      await reproducirAudio(texto: textoCompleto)
-    }
-  }
-
-  func reproducirAudio(texto: String) async {
-    guard var components = URLComponents(string: "https://bidjuanmi.com/tts") else { return }
-    components.queryItems = [URLQueryItem(name: "text", value: texto)]
-    guard let url = components.url else { return }
-    do {
-      let (data, _) = try await URLSession.shared.data(from: url)
-      BidAudioPlayer.shared.play(data: data)
-    } catch { return }
-  }
-
-  func showErrorMsg(_ message: String) {
-    errorMessage = message
-    showError = true
-  }
-
-  private func formatError(_ error: StreamSessionError) -> String {
-    switch error {
-    case .internalError: return "An internal error occurred. Please try again."
-    case .deviceNotFound: return "Device not found. Please ensure your device is connected."
-    case .deviceNotConnected: return "Device not connected. Please check your connection and try again."
-    case .timeout: return "The operation timed out. Please try again."
-    case .videoStreamingError: return "Video streaming failed. Please try again."
-    case .permissionDenied: return "Camera permission denied. Please grant permission in Settings."
-    case .hingesClosed: return "The hinges on the glasses were closed. Please open the hinges and try again."
-    case .thermalCritical: return "Device is overheating. Streaming has been paused to protect the device."
-    @unknown default: return "An unknown streaming error occurred."
-    }
   }
 }
