@@ -18,7 +18,7 @@ struct CameraAccessApp: App {
       try Wearables.configure()
     } catch {
       #if DEBUG
-      NSLog("[BID] Failed to configure Wearables SDK: \(error)")
+      NSLog("[BID] Error: \(error)")
       #endif
     }
     let wearables = Wearables.shared
@@ -28,7 +28,7 @@ struct CameraAccessApp: App {
 
   var body: some Scene {
     WindowGroup {
-      BIDMainView(wearables: wearables, viewModel: wearablesViewModel)
+      MainAppView(wearables: Wearables.shared, viewModel: wearablesViewModel)
         .alert("Error", isPresented: $wearablesViewModel.showError) {
           Button("OK") { wearablesViewModel.dismissError() }
         } message: {
