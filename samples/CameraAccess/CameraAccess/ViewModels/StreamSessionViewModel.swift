@@ -116,16 +116,28 @@ final class StreamSessionViewModel: ObservableObject {
 
   private func setupListeners(for stream: StreamSession) {
     stateListenerToken = stream.statePublisher.listen { [weak self] state in
-      Task { @MainActor in self?.handleStateChange(state) }
+      guard let self = self else { return }
+      Task { @MainActor [self] in
+        self.handleStateChange(state)
+      }
     }
     videoFrameListenerToken = stream.videoFramePublisher.listen { [weak self] frame in
-      Task { @MainActor in self?.handleVideoFrame(frame) }
+      guard let self = self else { return }
+      Task { @MainActor [self] in
+        self.handleVideoFrame(frame)
+      }
     }
     errorListenerToken = stream.errorPublisher.listen { [weak self] error in
-      Task { @MainActor in self?.handleError(error) }
+      guard let self = self else { return }
+      Task { @MainActor [self] in
+        self.handleError(error)
+      }
     }
     photoDataListenerToken = stream.photoDataPublisher.listen { [weak self] data in
-      Task { @MainActor in self?.handlePhotoData(data) }
+      guard let self = self else { return }
+      Task { @MainActor [self] in
+        self.handlePhotoData(data)
+      }
     }
   }
 
