@@ -13,6 +13,7 @@ struct CameraAccessApp: App {
   #if DEBUG
   @StateObject private var debugMenuViewModel = DebugMenuViewModel(mockDeviceKit: MockDeviceKit.shared)
   #endif
+  @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
   private let wearables: WearablesInterface
   @StateObject private var wearablesViewModel: WearablesViewModel
   private var silencioPlayer: AVAudioPlayer?
