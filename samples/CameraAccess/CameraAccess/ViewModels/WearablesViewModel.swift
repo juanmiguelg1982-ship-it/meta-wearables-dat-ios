@@ -291,7 +291,7 @@ class WearablesViewModel: ObservableObject {
         let http = response as? HTTPURLResponse
         bidStatus = "OK \(http?.statusCode ?? 0) - \(data.count) bytes"
       } catch {
-        bidStatus = "Error: \(error.localizedParameter)"
+        bidStatus = "Error: \(error.localizedDescription)"
       }
     }
   }
