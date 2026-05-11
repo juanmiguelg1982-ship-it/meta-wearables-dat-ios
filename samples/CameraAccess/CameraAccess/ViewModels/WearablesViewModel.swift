@@ -9,27 +9,18 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private let onPregunta: (String) async -> Void
 
   private var speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
-  private var speechRecognizer2 = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
   private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
-  private var recognitionRequest2: SFSpeechAudioBufferRecognitionRequest?
   private var recognitionTask: SFSpeechRecognitionTask?
-  private var recognitionTask2: SFSpeechRecognitionTask?
   private var audioEngine = AVAudioEngine()
-  private var audioEngine2 = AVAudioEngine()
   private var grabandoRespuesta = false
   private var silenceTimer: Timer?
-  private var grabacionURL: URL?
-  private var textoAcumulado = ""
+  private var ultimoTexto = ""
+  private var faseEscucha = false // false = buscando BID, true = escuchando pregunta
 
   static var instancia: BidEscuchaManager?
 
-  static func pausarEngine() {
-    instancia?.pausar()
-  }
-
-  static func reanudarEngine() {
-    instancia?.reanudar()
-  }
+  static func pausarEngine() { instancia?.pausar() }
+  static func reanudarEngine() { instancia?.reanudar() }
 
   init(onEstado: @escaping (String) -> Void, onPregunta: @escaping (String) async -> Void) {
     self.onEstado = onEstado
@@ -40,84 +31,140 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   }
 
   func arrancar() {
-    try? AVAudioSession.sharedInstance().setCategory(
-      .record,
-      mode: .default,
-      options: [.allowBluetooth, .mixWithOthers]
-    )
+    try? AVAudioSession.sharedInstance().setCategory(.record, mode: .default, options: [.allowBluetooth, .mixWithOthers])
     try? AVAudioSession.sharedInstance().setActive(true)
-
     SFSpeechRecognizer.requestAuthorization { [weak self] status in
       guard status == .authorized else { return }
       DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-        self?.iniciarEscucha()
+        self?.iniciarEscuchaBID()
       }
     }
   }
 
   func pausar() {
-    if audioEngine.isRunning {
-      audioEngine.pause()
-    }
+    if audioEngine.isRunning { audioEngine.pause() }
   }
 
   func reanudar() {
     guard !grabandoRespuesta else { return }
     DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-      self.iniciarEscucha()
+      self.iniciarEscuchaBID()
     }
   }
 
-  // MARK: - Fase 1: Escuchar wake word "BID"
+  // MARK: - Fase 1: Escuchar "BID"
 
-  private func iniciarEscucha() {
-    recognitionTask?.cancel()
-    recognitionTask = nil
-
-    if audioEngine.isRunning {
-      audioEngine.inputNode.removeTap(onBus: 0)
-      audioEngine.stop()
-    }
-
-    try? AVAudioSession.sharedInstance().setCategory(
-      .record,
-      mode: .default,
-      options: [.allowBluetooth, .mixWithOthers]
-    )
-    try? AVAudioSession.sharedInstance().setActive(true)
+  private func iniciarEscuchaBID() {
+    faseEscucha = false
+    pararEngine()
 
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-    guard let recognitionRequest = recognitionRequest else { return }
-    recognitionRequest.shouldReportPartialResults = true
+    guard let req = recognitionRequest else { return }
+    req.shouldReportPartialResults = true
 
-    recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { [weak self] result, error in
-      guard let self = self else { return }
+    recognitionTask = speechRecognizer?.recognitionTask(with: req) { [weak self] result, error in
+      guard let self = self, !self.faseEscucha else { return }
       if let result = result {
         let texto = result.bestTranscription.formattedString.lowercased()
-        if !self.grabandoRespuesta && (
-          texto.hasSuffix("bid") || texto.contains("bid ") || texto == "bid" ||
-          texto.hasSuffix("david") || texto.contains("david") ||
-          texto.hasSuffix("vid") || texto.hasSuffix("bit") ||
-          texto.hasSuffix("beat") || texto.hasSuffix("pid") ||
-          texto.contains("oye bid") || texto.contains("hey bid")
-        ) {
+        if texto.contains("bid") || texto.contains("david") ||
+           texto.hasSuffix("vid") || texto.hasSuffix("bit") ||
+           texto.contains("oye bid") || texto.contains("hey bid") {
           DispatchQueue.main.async { self.wakeWordDetectado() }
         }
       }
       if error != nil {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-          self.iniciarEscucha()
-        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciarEscuchaBID() }
       }
     }
 
-    let inputNode = audioEngine.inputNode
-    let formato = inputNode.outputFormat(forBus: 0)
+    arrancarEngine()
+    onEstado("Escuchando... di BID")
+  }
 
-    guard formato.sampleRate > 0 else {
-      onEstado("Error formato audio")
+  // MARK: - Fase 2: Escuchar pregunta
+
+  private func wakeWordDetectado() {
+    guard !grabandoRespuesta else { return }
+    faseEscucha = true
+    grabandoRespuesta = true
+    ultimoTexto = ""
+
+    onEstado("🎤 ...")
+    AudioServicesPlaySystemSound(1057)
+
+    // Reiniciar reconocedor para escuchar la pregunta
+    pararEngine()
+
+    recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+    guard let req = recognitionRequest else { return }
+    req.shouldReportPartialResults = true
+
+    recognitionTask = speechRecognizer?.recognitionTask(with: req) { [weak self] result, error in
+      guard let self = self else { return }
+      if let result = result {
+        let texto = result.bestTranscription.formattedString
+        self.ultimoTexto = texto
+        DispatchQueue.main.async { self.onEstado("🎤 \(texto)") }
+
+        // Detectar fin de frase — si el resultado es final
+        if result.isFinal {
+          DispatchQueue.main.async { self.pararYEnviar() }
+        }
+      }
+      if error != nil && self.grabandoRespuesta {
+        DispatchQueue.main.async { self.pararYEnviar() }
+      }
+    }
+
+    arrancarEngine()
+
+    // Máximo 8 segundos por si no detecta fin de frase
+    silenceTimer?.invalidate()
+    silenceTimer = Timer.scheduledTimer(withTimeInterval: 8.0, repeats: false) { [weak self] _ in
+      self?.pararYEnviar()
+    }
+  }
+
+  private func pararYEnviar() {
+    guard grabandoRespuesta else { return }
+    silenceTimer?.invalidate()
+    pararEngine()
+    grabandoRespuesta = false
+    faseEscucha = false
+
+    let transcripcion = ultimoTexto.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    guard !transcripcion.isEmpty else {
+      onEstado("No te he escuchado")
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciarEscuchaBID() }
       return
     }
+
+    onEstado("Procesando...")
+
+    Task {
+      await onPregunta(transcripcion)
+      DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { self.iniciarEscuchaBID() }
+    }
+  }
+
+  // MARK: - Engine helpers
+
+  private func pararEngine() {
+    recognitionTask?.cancel()
+    recognitionTask = nil
+    recognitionRequest?.endAudio()
+    recognitionRequest = nil
+    if audioEngine.isRunning {
+      audioEngine.inputNode.removeTap(onBus: 0)
+      audioEngine.stop()
+    }
+  }
+
+  private func arrancarEngine() {
+    let inputNode = audioEngine.inputNode
+    let formato = inputNode.outputFormat(forBus: 0)
+    guard formato.sampleRate > 0 else { return }
 
     inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
       self?.recognitionRequest?.append(buffer)
@@ -125,91 +172,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 
     do {
       try audioEngine.start()
-      onEstado("Escuchando... di BID")
     } catch {
-      DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-        self.iniciarEscucha()
-      }
-    }
-  }
-
-  // MARK: - Fase 2: Grabar y transcribir pregunta en tiempo real
-
-  private func wakeWordDetectado() {
-    guard !grabandoRespuesta else { return }
-    grabandoRespuesta = true
-
-    recognitionTask?.cancel()
-    recognitionTask = nil
-    recognitionRequest?.endAudio()
-    recognitionRequest = nil
-
-    if audioEngine.isRunning {
-      audioEngine.inputNode.removeTap(onBus: 0)
-      audioEngine.stop()
-    }
-
-    onEstado("🎤 ...")
-    AudioServicesPlaySystemSound(1057)
-    textoAcumulado = ""
-
-    // Usar segundo reconocedor para transcripción en tiempo real
-    recognitionRequest2 = SFSpeechAudioBufferRecognitionRequest()
-    guard let recognitionRequest2 = recognitionRequest2 else { return }
-    recognitionRequest2.shouldReportPartialResults = true
-
-    recognitionTask2 = speechRecognizer2?.recognitionTask(with: recognitionRequest2) { [weak self] result, error in
-      guard let self = self else { return }
-      if let result = result {
-        let texto = result.bestTranscription.formattedString
-        self.textoAcumulado = texto
-        DispatchQueue.main.async {
-          self.onEstado("🎤 \(texto)")
-        }
-      }
-    }
-
-    let inputNode2 = audioEngine2.inputNode
-    let formato2 = inputNode2.outputFormat(forBus: 0)
-
-    inputNode2.installTap(onBus: 0, bufferSize: 1024, format: formato2) { [weak self] buffer, _ in
-      self?.recognitionRequest2?.append(buffer)
-    }
-
-    try? audioEngine2.start()
-
-    silenceTimer?.invalidate()
-    silenceTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
-      self?.pararYEnviar()
-    }
-  }
-
-  private func pararYEnviar() {
-    silenceTimer?.invalidate()
-
-    recognitionTask2?.cancel()
-    recognitionTask2 = nil
-    recognitionRequest2?.endAudio()
-    recognitionRequest2 = nil
-
-    if audioEngine2.isRunning {
-      audioEngine2.inputNode.removeTap(onBus: 0)
-      audioEngine2.stop()
-    }
-
-    grabandoRespuesta = false
-    onEstado("Procesando...")
-
-    let transcripcion = textoAcumulado.trimmingCharacters(in: .whitespacesAndNewlines)
-
-    guard !transcripcion.isEmpty else {
-      DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciarEscucha() }
-      return
-    }
-
-    Task {
-      await onPregunta(transcripcion)
-      DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { self.iniciarEscucha() }
+      DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self.iniciarEscuchaBID() }
     }
   }
 }
