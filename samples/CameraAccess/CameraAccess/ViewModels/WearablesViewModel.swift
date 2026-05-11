@@ -15,10 +15,9 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private var grabandoRespuesta = false
   private var silenceTimer: Timer?
   private var ultimoTexto = ""
-  private var faseEscucha = false // false = buscando BID, true = escuchando pregunta
+  private var faseEscucha = false
 
   static var instancia: BidEscuchaManager?
-
   static func pausarEngine() { instancia?.pausar() }
   static func reanudarEngine() { instancia?.reanudar() }
 
@@ -31,8 +30,13 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   }
 
   func arrancar() {
-    try? AVAudioSession.sharedInstance().setCategory(.record, mode: .default, options: [.allowBluetooth, .mixWithOthers])
+    try? AVAudioSession.sharedInstance().setCategory(
+      .playAndRecord,
+      mode: .voiceChat,
+      options: [.allowBluetoothHFP, .mixWithOthers]
+    )
     try? AVAudioSession.sharedInstance().setActive(true)
+
     SFSpeechRecognizer.requestAuthorization { [weak self] status in
       guard status == .authorized else { return }
       DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
@@ -52,11 +56,16 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
   }
 
-  // MARK: - Fase 1: Escuchar "BID"
-
   private func iniciarEscuchaBID() {
     faseEscucha = false
     pararEngine()
+
+    try? AVAudioSession.sharedInstance().setCategory(
+      .playAndRecord,
+      mode: .voiceChat,
+      options: [.allowBluetoothHFP, .mixWithOthers]
+    )
+    try? AVAudioSession.sharedInstance().setActive(true)
 
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
     guard let req = recognitionRequest else { return }
@@ -81,8 +90,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     onEstado("Escuchando... di BID")
   }
 
-  // MARK: - Fase 2: Escuchar pregunta
-
   private func wakeWordDetectado() {
     guard !grabandoRespuesta else { return }
     faseEscucha = true
@@ -91,8 +98,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 
     onEstado("🎤 ...")
     AudioServicesPlaySystemSound(1057)
-
-    // Reiniciar reconocedor para escuchar la pregunta
     pararEngine()
 
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
@@ -105,8 +110,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         let texto = result.bestTranscription.formattedString
         self.ultimoTexto = texto
         DispatchQueue.main.async { self.onEstado("🎤 \(texto)") }
-
-        // Detectar fin de frase — si el resultado es final
         if result.isFinal {
           DispatchQueue.main.async { self.pararYEnviar() }
         }
@@ -118,7 +121,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 
     arrancarEngine()
 
-    // Máximo 8 segundos por si no detecta fin de frase
     silenceTimer?.invalidate()
     silenceTimer = Timer.scheduledTimer(withTimeInterval: 8.0, repeats: false) { [weak self] _ in
       self?.pararYEnviar()
@@ -147,8 +149,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
       DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { self.iniciarEscuchaBID() }
     }
   }
-
-  // MARK: - Engine helpers
 
   private func pararEngine() {
     recognitionTask?.cancel()
@@ -236,40 +236,26 @@ class WearablesViewModel: ObservableObject {
   }
 
   func arrancarEscucha() {
-  guard bidEscucha == nil else { return }
-  
-  // Pedir tiempo extra a iOS cuando vamos a segundo plano
-  NotificationCenter.default.addObserver(
-    forName: UIApplication.didEnterBackgroundNotification,
-    object: nil,
-    queue: .main
-  ) { _ in
-    var bgTask: UIBackgroundTaskIdentifier = .invalid
-    bgTask = UIApplication.shared.beginBackgroundTask {
-      UIApplication.shared.endBackgroundTask(bgTask)
-    }
-  }
+    guard bidEscucha == nil else { return }
+    bidEscucha = BidEscuchaManager { [weak self] estado in
+      Task { @MainActor in self?.bidStatus = estado }
+    } onPregunta: { [weak self] (texto: String) in
+      guard let self = self else { return }
 
-  bidEscucha = BidEscuchaManager { [weak self] estado in
-    Task { @MainActor in self?.bidStatus = estado }
-  } onPregunta: { [weak self] (texto: String) in
-    guard let self = self else { return }
-    
-    // Pedir tiempo extra para procesar la respuesta
-    var bgTask: UIBackgroundTaskIdentifier = .invalid
-    bgTask = UIApplication.shared.beginBackgroundTask {
+      var bgTask: UIBackgroundTaskIdentifier = .invalid
+      bgTask = UIApplication.shared.beginBackgroundTask {
+        UIApplication.shared.endBackgroundTask(bgTask)
+      }
+
+      await MainActor.run { self.bidStatus = "Tú: \(texto)" }
+      let vm = StreamSessionViewModel(wearables: self.wearables)
+      await vm.enviarMensajeABid(mensaje: texto)
+      await MainActor.run { self.bidStatus = "Escuchando... di BID" }
+
       UIApplication.shared.endBackgroundTask(bgTask)
     }
-    
-    await MainActor.run { self.bidStatus = "Tú: \(texto)" }
-    let vm = StreamSessionViewModel(wearables: self.wearables)
-    await vm.enviarMensajeABid(mensaje: texto)
-    await MainActor.run { self.bidStatus = "Escuchando... di BID" }
-    
-    UIApplication.shared.endBackgroundTask(bgTask)
+    bidEscucha?.arrancar()
   }
-  bidEscucha?.arrancar()
-}
 
   private func setupDeviceStream() async {
     if let task = deviceStreamTask, !task.isCancelled { task.cancel() }
