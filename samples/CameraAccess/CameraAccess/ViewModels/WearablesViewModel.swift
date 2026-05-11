@@ -36,13 +36,21 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   }
 
   func arrancar() {
-    SFSpeechRecognizer.requestAuthorization { [weak self] status in
-      guard status == .authorized else { return }
-      DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-        self?.iniciarEscucha()
-      }
+  // Evitar que iOS pare el audio en segundo plano
+  try? AVAudioSession.sharedInstance().setCategory(
+    .record,
+    mode: .default,
+    options: [.allowBluetooth, .mixWithOthers]
+  )
+  try? AVAudioSession.sharedInstance().setActive(true)
+  
+  SFSpeechRecognizer.requestAuthorization { [weak self] status in
+    guard status == .authorized else { return }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+      self?.iniciarEscucha()
     }
   }
+}
 
   func pausar() {
     if audioEngine.isRunning {
