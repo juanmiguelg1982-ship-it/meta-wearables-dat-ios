@@ -43,7 +43,8 @@ final class BidAudioPlayer: NSObject, @unchecked Sendable {
 
 extension BidAudioPlayer: AVAudioPlayerDelegate {
   func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-  DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+  DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+    NotificationCenter.default.post(name: NSNotification.Name("BIDAudioTerminado"), object: nil)
     BidEscuchaManager.reanudarEngine()
   }
 }
