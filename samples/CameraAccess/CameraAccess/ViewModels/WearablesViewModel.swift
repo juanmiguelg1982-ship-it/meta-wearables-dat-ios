@@ -9,13 +9,17 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private let onPregunta: (String) async -> Void
 
   private var speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
+  private var speechRecognizer2 = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
   private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+  private var recognitionRequest2: SFSpeechAudioBufferRecognitionRequest?
   private var recognitionTask: SFSpeechRecognitionTask?
+  private var recognitionTask2: SFSpeechRecognitionTask?
   private var audioEngine = AVAudioEngine()
+  private var audioEngine2 = AVAudioEngine()
   private var grabandoRespuesta = false
   private var silenceTimer: Timer?
   private var grabacionURL: URL?
-  private var audioRecorder: AVAudioRecorder?
+  private var textoAcumulado = ""
 
   static var instancia: BidEscuchaManager?
 
@@ -36,21 +40,20 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   }
 
   func arrancar() {
-  // Evitar que iOS pare el audio en segundo plano
-  try? AVAudioSession.sharedInstance().setCategory(
-    .record,
-    mode: .default,
-    options: [.allowBluetooth, .mixWithOthers]
-  )
-  try? AVAudioSession.sharedInstance().setActive(true)
-  
-  SFSpeechRecognizer.requestAuthorization { [weak self] status in
-    guard status == .authorized else { return }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-      self?.iniciarEscucha()
+    try? AVAudioSession.sharedInstance().setCategory(
+      .record,
+      mode: .default,
+      options: [.allowBluetooth, .mixWithOthers]
+    )
+    try? AVAudioSession.sharedInstance().setActive(true)
+
+    SFSpeechRecognizer.requestAuthorization { [weak self] status in
+      guard status == .authorized else { return }
+      DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        self?.iniciarEscucha()
+      }
     }
   }
-}
 
   func pausar() {
     if audioEngine.isRunning {
@@ -59,11 +62,13 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   }
 
   func reanudar() {
-  guard !grabandoRespuesta else { return }
-  DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-    self.iniciarEscucha()
+    guard !grabandoRespuesta else { return }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+      self.iniciarEscucha()
+    }
   }
-}
+
+  // MARK: - Fase 1: Escuchar wake word "BID"
 
   private func iniciarEscucha() {
     recognitionTask?.cancel()
@@ -77,7 +82,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     try? AVAudioSession.sharedInstance().setCategory(
       .record,
       mode: .default,
-      options: [.allowBluetooth]
+      options: [.allowBluetooth, .mixWithOthers]
     )
     try? AVAudioSession.sharedInstance().setActive(true)
 
@@ -119,90 +124,93 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
 
     do {
-  try audioEngine.start()
-  onEstado("Escuchando... di BID")
-} catch {
-  // Si falla reintentar en 2 segundos
-  DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-    self.iniciarEscucha()
-  }
-}
-  }
-
-  private func wakeWordDetectado() {
-  guard !grabandoRespuesta else { return }
-  grabandoRespuesta = true
-
-  // Cancelar reconocimiento para evitar detecciones repetidas
-  recognitionTask?.cancel()
-  recognitionTask = nil
-  recognitionRequest?.endAudio()
-  recognitionRequest = nil
-
-  onEstado("🎤 Escuchando pregunta...")
-  AudioServicesPlaySystemSound(1057)
-
-  if audioEngine.isRunning {
-    audioEngine.inputNode.removeTap(onBus: 0)
-    audioEngine.stop()
-  }
-
-  let url = FileManager.default.temporaryDirectory.appendingPathComponent("bid_pregunta.m4a")
-  grabacionURL = url
-
-  let settings: [String: Any] = [
-    AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-    AVSampleRateKey: 44100,
-    AVNumberOfChannelsKey: 1,
-    AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue
-  ]
-
-  audioRecorder = try? AVAudioRecorder(url: url, settings: settings)
-  audioRecorder?.record()
-
-  silenceTimer?.invalidate()
-  silenceTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
-    self?.pararYEnviar()
-  }
-}
-
-  private func pararYEnviar() {
-    silenceTimer?.invalidate()
-    audioRecorder?.stop()
-    audioRecorder = nil
-    grabandoRespuesta = false
-    onEstado("Procesando...")
-
-    guard let url = grabacionURL else { return }
-
-    Task {
-      guard let transcripcion = await transcribirAudio(url: url),
-            !transcripcion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciarEscucha() }
-        return
+      try audioEngine.start()
+      onEstado("Escuchando... di BID")
+    } catch {
+      DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        self.iniciarEscucha()
       }
-      await onPregunta(transcripcion)
-      DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { self.iniciarEscucha() }
     }
   }
 
-  private func transcribirAudio(url: URL) async -> String? {
-    guard let audioData = try? Data(contentsOf: url) else { return nil }
-    var request = URLRequest(url: URL(string: "https://bidjuanmi.com/whisper")!)
-    request.httpMethod = "POST"
-    let boundary = "Boundary-\(UUID().uuidString)"
-    request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-    var body = Data()
-    body.append("--\(boundary)\r\n".data(using: .utf8)!)
-    body.append("Content-Disposition: form-data; name=\"audio_file\"; filename=\"audio.m4a\"\r\n".data(using: .utf8)!)
-    body.append("Content-Type: audio/m4a\r\n\r\n".data(using: .utf8)!)
-    body.append(audioData)
-    body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
-    request.httpBody = body
-    guard let (data, _) = try? await URLSession.shared.data(for: request),
-          let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-          let texto = json["text"] as? String else { return nil }
-    return texto
+  // MARK: - Fase 2: Grabar y transcribir pregunta en tiempo real
+
+  private func wakeWordDetectado() {
+    guard !grabandoRespuesta else { return }
+    grabandoRespuesta = true
+
+    recognitionTask?.cancel()
+    recognitionTask = nil
+    recognitionRequest?.endAudio()
+    recognitionRequest = nil
+
+    if audioEngine.isRunning {
+      audioEngine.inputNode.removeTap(onBus: 0)
+      audioEngine.stop()
+    }
+
+    onEstado("🎤 ...")
+    AudioServicesPlaySystemSound(1057)
+    textoAcumulado = ""
+
+    // Usar segundo reconocedor para transcripción en tiempo real
+    recognitionRequest2 = SFSpeechAudioBufferRecognitionRequest()
+    guard let recognitionRequest2 = recognitionRequest2 else { return }
+    recognitionRequest2.shouldReportPartialResults = true
+
+    recognitionTask2 = speechRecognizer2?.recognitionTask(with: recognitionRequest2) { [weak self] result, error in
+      guard let self = self else { return }
+      if let result = result {
+        let texto = result.bestTranscription.formattedString
+        self.textoAcumulado = texto
+        DispatchQueue.main.async {
+          self.onEstado("🎤 \(texto)")
+        }
+      }
+    }
+
+    let inputNode2 = audioEngine2.inputNode
+    let formato2 = inputNode2.outputFormat(forBus: 0)
+
+    inputNode2.installTap(onBus: 0, bufferSize: 1024, format: formato2) { [weak self] buffer, _ in
+      self?.recognitionRequest2?.append(buffer)
+    }
+
+    try? audioEngine2.start()
+
+    silenceTimer?.invalidate()
+    silenceTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
+      self?.pararYEnviar()
+    }
+  }
+
+  private func pararYEnviar() {
+    silenceTimer?.invalidate()
+
+    recognitionTask2?.cancel()
+    recognitionTask2 = nil
+    recognitionRequest2?.endAudio()
+    recognitionRequest2 = nil
+
+    if audioEngine2.isRunning {
+      audioEngine2.inputNode.removeTap(onBus: 0)
+      audioEngine2.stop()
+    }
+
+    grabandoRespuesta = false
+    onEstado("Procesando...")
+
+    let transcripcion = textoAcumulado.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    guard !transcripcion.isEmpty else {
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciarEscucha() }
+      return
+    }
+
+    Task {
+      await onPregunta(transcripcion)
+      DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { self.iniciarEscucha() }
+    }
   }
 }
 
