@@ -169,6 +169,9 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
   }
 
+  func pausarConversacionTimer() {
+  conversacionTimer?.invalidate()
+}
   func reiniciarTimerConversacion() {
   conversacionTimer?.invalidate()
   conversacionTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
@@ -320,7 +323,7 @@ class WearablesViewModel: ObservableObject {
     }
     await MainActor.run {
       self.bidStatus = "Tú: \(texto)"
-      BidEscuchaManager.instancia?.conversacionTimer?.invalidate()
+      BidEscuchaManager.instancia?.pausarConversacionTimer()
     }
     let vm = StreamSessionViewModel(wearables: self.wearables)
     await vm.enviarMensajeABid(mensaje: texto)
