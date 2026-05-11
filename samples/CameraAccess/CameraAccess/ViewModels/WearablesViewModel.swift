@@ -51,11 +51,11 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   }
 
   func reanudar() {
-    guard !grabandoRespuesta else { return }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-      self.iniciarEscucha()
-    }
+  guard !grabandoRespuesta else { return }
+  DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+    self.iniciarEscucha()
   }
+}
 
   private func iniciarEscucha() {
     recognitionTask?.cancel()
@@ -111,14 +111,14 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
 
     do {
-      try audioEngine.start()
-      onEstado("Escuchando... di BID")
-    } catch {
-      onEstado("Error: \(error.localizedDescription)")
-      DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-        self.iniciarEscucha()
-      }
-    }
+  try audioEngine.start()
+  onEstado("Escuchando... di BID")
+} catch {
+  // Si falla reintentar en 2 segundos
+  DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+    self.iniciarEscucha()
+  }
+}
   }
 
   private func wakeWordDetectado() {
