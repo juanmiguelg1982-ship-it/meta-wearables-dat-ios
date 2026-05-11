@@ -113,12 +113,10 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     options: [.allowBluetoothHFP, .mixWithOthers]
   )
   try? AVAudioSession.sharedInstance().setActive(true)
-  DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-    if self.enConversacion {
-      self.iniciarEscuchaPregunta()
-    } else {
-      self.iniciarEscuchaBID()
-    }
+  if self.enConversacion {
+    self.iniciarEscuchaPregunta()
+  } else {
+    self.iniciarEscuchaBID()
   }
 }
   private func iniciarEscuchaPregunta() {
