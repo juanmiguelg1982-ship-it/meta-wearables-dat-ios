@@ -302,23 +302,26 @@ class WearablesViewModel: ObservableObject {
   bidEscucha = BidEscuchaManager { [weak self] estado in
     Task { @MainActor in self?.bidStatus = estado }
   } onPregunta: { [weak self] (texto: String) in
-    guard let self = self else { return }
-    var bgTask: UIBackgroundTaskIdentifier = .invalid
-    bgTask = UIApplication.shared.beginBackgroundTask {
-      UIApplication.shared.endBackgroundTask(bgTask)
-    }
-    await MainActor.run {
-      self.bidStatus = "Tú: \(texto)"
-      BidEscuchaManager.instancia?.pausarConversacionTimer()
-    }
-    let vm = StreamSessionViewModel(wearables: self.wearables)
-    await vm.enviarMensajeABid(mensaje: texto)
-    await MainActor.run {
-      self.bidStatus = "Escuchando..."
-      BidEscuchaManager.instancia?.reiniciarTimerConversacion()
-    }
+  guard let self = self else { return }
+  var bgTask: UIBackgroundTaskIdentifier = .invalid
+  bgTask = UIApplication.shared.beginBackgroundTask {
     UIApplication.shared.endBackgroundTask(bgTask)
   }
+  await MainActor.run {
+    self.bidStatus = "Tú: \(texto)"
+    BidEscuchaManager.instancia?.pausarConversacionTimer()
+  }
+  let vm = StreamSessionViewModel(wearables: self.wearables)
+  await vm.enviarMensajeABid(mensaje: texto)
+  // Esperar a que el audio termine antes de reiniciar
+  try? await Task.sleep(nanoseconds: 2_000_000_000)
+  await MainActor.run {
+    self.bidStatus = "Escuchando..."
+    BidEscuchaManager.instancia?.reiniciarTimerConversacion()
+    BidEscuchaManager.instancia?.reanudar()
+  }
+  UIApplication.shared.endBackgroundTask(bgTask)
+}
   bidEscucha?.arrancar()
 }
 
