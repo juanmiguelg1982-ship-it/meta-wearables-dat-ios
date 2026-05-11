@@ -236,18 +236,40 @@ class WearablesViewModel: ObservableObject {
   }
 
   func arrancarEscucha() {
-    guard bidEscucha == nil else { return }
-    bidEscucha = BidEscuchaManager { [weak self] estado in
-      Task { @MainActor in self?.bidStatus = estado }
-    } onPregunta: { [weak self] (texto: String) in
-      guard let self = self else { return }
-      await MainActor.run { self.bidStatus = "Tú: \(texto)" }
-      let vm = StreamSessionViewModel(wearables: self.wearables)
-      await vm.enviarMensajeABid(mensaje: texto)
-      await MainActor.run { self.bidStatus = "Escuchando... di BID" }
+  guard bidEscucha == nil else { return }
+  
+  // Pedir tiempo extra a iOS cuando vamos a segundo plano
+  NotificationCenter.default.addObserver(
+    forName: UIApplication.didEnterBackgroundNotification,
+    object: nil,
+    queue: .main
+  ) { _ in
+    var bgTask: UIBackgroundTaskIdentifier = .invalid
+    bgTask = UIApplication.shared.beginBackgroundTask {
+      UIApplication.shared.endBackgroundTask(bgTask)
     }
-    bidEscucha?.arrancar()
   }
+
+  bidEscucha = BidEscuchaManager { [weak self] estado in
+    Task { @MainActor in self?.bidStatus = estado }
+  } onPregunta: { [weak self] (texto: String) in
+    guard let self = self else { return }
+    
+    // Pedir tiempo extra para procesar la respuesta
+    var bgTask: UIBackgroundTaskIdentifier = .invalid
+    bgTask = UIApplication.shared.beginBackgroundTask {
+      UIApplication.shared.endBackgroundTask(bgTask)
+    }
+    
+    await MainActor.run { self.bidStatus = "Tú: \(texto)" }
+    let vm = StreamSessionViewModel(wearables: self.wearables)
+    await vm.enviarMensajeABid(mensaje: texto)
+    await MainActor.run { self.bidStatus = "Escuchando... di BID" }
+    
+    UIApplication.shared.endBackgroundTask(bgTask)
+  }
+  bidEscucha?.arrancar()
+}
 
   private func setupDeviceStream() async {
     if let task = deviceStreamTask, !task.isCancelled { task.cancel() }
