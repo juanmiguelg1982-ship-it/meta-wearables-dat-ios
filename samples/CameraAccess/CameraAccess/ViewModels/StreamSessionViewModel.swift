@@ -43,14 +43,7 @@ final class BidAudioPlayer: NSObject, @unchecked Sendable {
 
 extension BidAudioPlayer: AVAudioPlayerDelegate {
   func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-  DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-    // Devolver sesión a modo grabación antes de reanudar
-    try? AVAudioSession.sharedInstance().setCategory(
-      .record,
-      mode: .default,
-      options: [.allowBluetooth]
-    )
-    try? AVAudioSession.sharedInstance().setActive(true)
+  DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
     BidEscuchaManager.reanudarEngine()
   }
 }
