@@ -116,6 +116,22 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 
   // MARK: - Fase 2: Escuchar pregunta (en conversación)
 
+  func reanudar() {
+  guard !grabandoRespuesta else { return }
+  try? AVAudioSession.sharedInstance().setCategory(
+    .playAndRecord,
+    mode: .voiceChat,
+    options: [.allowBluetoothHFP, .mixWithOthers]
+  )
+  try? AVAudioSession.sharedInstance().setActive(true)
+  DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+    if self.enConversacion {
+      self.iniciarEscuchaPregunta()
+    } else {
+      self.iniciarEscuchaBID()
+    }
+  }
+}
   private func iniciarEscuchaPregunta() {
     grabandoRespuesta = true
     ultimoTexto = ""
