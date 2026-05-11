@@ -1,6 +1,9 @@
+import AVFoundation
 import Foundation
 import MWDATCore
 import SwiftUI
+import UIKit
+
 #if DEBUG
 import MWDATMockDevice
 #endif
@@ -24,6 +27,18 @@ struct CameraAccessApp: App {
     let wearables = Wearables.shared
     self.wearables = wearables
     self._wearablesViewModel = StateObject(wrappedValue: WearablesViewModel(wearables: wearables))
+
+    // Mantener app activa en segundo plano para el audio
+    setupBackgroundAudio()
+  }
+
+  private func setupBackgroundAudio() {
+    try? AVAudioSession.sharedInstance().setCategory(
+      .playAndRecord,
+      mode: .default,
+      options: [.allowBluetooth, .mixWithOthers]
+    )
+    try? AVAudioSession.sharedInstance().setActive(true)
   }
 
   var body: some Scene {
