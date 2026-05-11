@@ -14,12 +14,19 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private var audioEngine = AVAudioEngine()
   private var grabandoRespuesta = false
   private var silenceTimer: Timer?
+  private var envioTimer: Timer?
+  private var conversacionTimer: Timer?
   private var ultimoTexto = ""
+  private var textoAnterior = ""
   private var faseEscucha = false
+  private var enConversacion = false
 
   static var instancia: BidEscuchaManager?
   static func pausarEngine() { instancia?.pausar() }
   static func reanudarEngine() { instancia?.reanudar() }
+
+  private let palabrasActivacion = ["oye"]
+  private let palabrasTerminar = ["ok", "listo", "hecho"]
 
   init(onEstado: @escaping (String) -> Void, onPregunta: @escaping (String) async -> Void) {
     self.onEstado = onEstado
@@ -52,12 +59,20 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   func reanudar() {
     guard !grabandoRespuesta else { return }
     DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-      self.iniciarEscuchaBID()
+      if self.enConversacion {
+        self.iniciarEscuchaPregunta()
+      } else {
+        self.iniciarEscuchaBID()
+      }
     }
   }
 
+  // MARK: - Fase 1: Esperar "oye"
+
   private func iniciarEscuchaBID() {
+    enConversacion = false
     faseEscucha = false
+    conversacionTimer?.invalidate()
     pararEngine()
 
     try? AVAudioSession.sharedInstance().setCategory(
@@ -75,9 +90,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
       guard let self = self, !self.faseEscucha else { return }
       if let result = result {
         let texto = result.bestTranscription.formattedString.lowercased()
-        if texto.contains("bid") || texto.contains("david") ||
-           texto.hasSuffix("vid") || texto.hasSuffix("bit") ||
-           texto.contains("oye bid") || texto.contains("hey bid") {
+        if self.palabrasActivacion.contains(where: { texto.contains($0) }) {
           DispatchQueue.main.async { self.wakeWordDetectado() }
         }
       }
@@ -87,17 +100,27 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
 
     arrancarEngine()
-    onEstado("Escuchando... di BID")
+    onEstado("Escuchando... di OYE")
   }
+
+  // MARK: - Wake word detectado
 
   private func wakeWordDetectado() {
     guard !grabandoRespuesta else { return }
     faseEscucha = true
+    enConversacion = true
+    AudioServicesPlaySystemSound(1057)
+    pararEngine()
+    iniciarEscuchaPregunta()
+  }
+
+  // MARK: - Fase 2: Escuchar pregunta (en conversación)
+
+  private func iniciarEscuchaPregunta() {
     grabandoRespuesta = true
     ultimoTexto = ""
-
+    textoAnterior = ""
     onEstado("🎤 ...")
-    AudioServicesPlaySystemSound(1057)
     pararEngine()
 
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
@@ -108,8 +131,26 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
       guard let self = self else { return }
       if let result = result {
         let texto = result.bestTranscription.formattedString
+        let textoLower = texto.lowercased()
+
+        // Detectar palabras para terminar conversación
+        if self.palabrasTerminar.contains(where: { textoLower == $0 || textoLower.hasSuffix(" \($0)") }) {
+          DispatchQueue.main.async { self.terminarConversacion() }
+          return
+        }
+
         self.ultimoTexto = texto
         DispatchQueue.main.async { self.onEstado("🎤 \(texto)") }
+
+        // Reiniciar timer de envío — 1.5 segundos sin cambios = manda
+        if texto != self.textoAnterior {
+          self.textoAnterior = texto
+          self.envioTimer?.invalidate()
+          self.envioTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { [weak self] _ in
+            self?.pararYEnviar()
+          }
+        }
+
         if result.isFinal {
           DispatchQueue.main.async { self.pararYEnviar() }
         }
@@ -121,24 +162,42 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 
     arrancarEngine()
 
-    silenceTimer?.invalidate()
-    silenceTimer = Timer.scheduledTimer(withTimeInterval: 8.0, repeats: false) { [weak self] _ in
-      self?.pararYEnviar()
+    // Timer de conversación — 10 segundos sin hablar termina conversación
+    conversacionTimer?.invalidate()
+    conversacionTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
+      self?.terminarConversacion()
+    }
+  }
+
+  private func terminarConversacion() {
+    envioTimer?.invalidate()
+    conversacionTimer?.invalidate()
+    grabandoRespuesta = false
+    faseEscucha = false
+    pararEngine()
+    onEstado("Conversación terminada")
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+      self.iniciarEscuchaBID()
     }
   }
 
   private func pararYEnviar() {
     guard grabandoRespuesta else { return }
-    silenceTimer?.invalidate()
+    envioTimer?.invalidate()
     pararEngine()
     grabandoRespuesta = false
-    faseEscucha = false
 
     let transcripcion = ultimoTexto.trimmingCharacters(in: .whitespacesAndNewlines)
 
     guard !transcripcion.isEmpty else {
       onEstado("No te he escuchado")
-      DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciarEscuchaBID() }
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        if self.enConversacion {
+          self.iniciarEscuchaPregunta()
+        } else {
+          self.iniciarEscuchaBID()
+        }
+      }
       return
     }
 
@@ -146,11 +205,19 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 
     Task {
       await onPregunta(transcripcion)
-      DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { self.iniciarEscuchaBID() }
+      // Después de responder, seguir en conversación
+      DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+        if self.enConversacion {
+          self.iniciarEscuchaPregunta()
+        } else {
+          self.iniciarEscuchaBID()
+        }
+      }
     }
   }
 
   private func pararEngine() {
+    envioTimer?.invalidate()
     recognitionTask?.cancel()
     recognitionTask = nil
     recognitionRequest?.endAudio()
@@ -224,7 +291,7 @@ class WearablesViewModel: ObservableObject {
         let http = response as? HTTPURLResponse
         bidStatus = "OK \(http?.statusCode ?? 0) - \(data.count) bytes"
       } catch {
-        bidStatus = "Error: \(error.localizedDescription)"
+        bidStatus = "Error: \(error.localizedParameter)"
       }
     }
   }
@@ -250,7 +317,7 @@ class WearablesViewModel: ObservableObject {
       await MainActor.run { self.bidStatus = "Tú: \(texto)" }
       let vm = StreamSessionViewModel(wearables: self.wearables)
       await vm.enviarMensajeABid(mensaje: texto)
-      await MainActor.run { self.bidStatus = "Escuchando... di BID" }
+      await MainActor.run { self.bidStatus = "Escuchando..." }
 
       UIApplication.shared.endBackgroundTask(bgTask)
     }
