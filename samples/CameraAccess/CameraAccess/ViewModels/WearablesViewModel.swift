@@ -122,34 +122,41 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   }
 
   private func wakeWordDetectado() {
-    guard !grabandoRespuesta else { return }
-    grabandoRespuesta = true
-    onEstado("🎤 Escuchando pregunta...")
-    AudioServicesPlaySystemSound(1057)
+  guard !grabandoRespuesta else { return }
+  grabandoRespuesta = true
 
-    if audioEngine.isRunning {
-      audioEngine.inputNode.removeTap(onBus: 0)
-      audioEngine.stop()
-    }
+  // Cancelar reconocimiento para evitar detecciones repetidas
+  recognitionTask?.cancel()
+  recognitionTask = nil
+  recognitionRequest?.endAudio()
+  recognitionRequest = nil
 
-    let url = FileManager.default.temporaryDirectory.appendingPathComponent("bid_pregunta.m4a")
-    grabacionURL = url
+  onEstado("🎤 Escuchando pregunta...")
+  AudioServicesPlaySystemSound(1057)
 
-    let settings: [String: Any] = [
-      AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-      AVSampleRateKey: 44100,
-      AVNumberOfChannelsKey: 1,
-      AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue
-    ]
-
-    audioRecorder = try? AVAudioRecorder(url: url, settings: settings)
-    audioRecorder?.record()
-
-    silenceTimer?.invalidate()
-    silenceTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
-      self?.pararYEnviar()
-    }
+  if audioEngine.isRunning {
+    audioEngine.inputNode.removeTap(onBus: 0)
+    audioEngine.stop()
   }
+
+  let url = FileManager.default.temporaryDirectory.appendingPathComponent("bid_pregunta.m4a")
+  grabacionURL = url
+
+  let settings: [String: Any] = [
+    AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+    AVSampleRateKey: 44100,
+    AVNumberOfChannelsKey: 1,
+    AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue
+  ]
+
+  audioRecorder = try? AVAudioRecorder(url: url, settings: settings)
+  audioRecorder?.record()
+
+  silenceTimer?.invalidate()
+  silenceTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
+    self?.pararYEnviar()
+  }
+}
 
   private func pararYEnviar() {
     silenceTimer?.invalidate()
