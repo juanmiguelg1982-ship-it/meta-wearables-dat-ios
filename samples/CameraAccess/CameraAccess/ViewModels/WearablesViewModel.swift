@@ -55,18 +55,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   func pausar() {
     if audioEngine.isRunning { audioEngine.pause() }
   }
-
-  func reanudar() {
-    guard !grabandoRespuesta else { return }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-      if self.enConversacion {
-        self.iniciarEscuchaPregunta()
-      } else {
-        self.iniciarEscuchaBID()
-      }
-    }
-  }
-
+ 
   // MARK: - Fase 1: Esperar "oye"
 
   private func iniciarEscuchaBID() {
