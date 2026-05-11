@@ -313,15 +313,23 @@ class WearablesViewModel: ObservableObject {
   }
   let vm = StreamSessionViewModel(wearables: self.wearables)
   await vm.enviarMensajeABid(mensaje: texto)
-  // Esperar a que el audio termine antes de reiniciar
-  try? await Task.sleep(nanoseconds: 2_000_000_000)
-  await MainActor.run {
-    self.bidStatus = "Escuchando..."
-    BidEscuchaManager.instancia?.reiniciarTimerConversacion()
-    BidEscuchaManager.instancia?.reanudar()
+
+// Esperar notificación de audio terminado
+await withCheckedContinuation { continuation in
+  NotificationCenter.default.addObserver(
+    forName: NSNotification.Name("BIDAudioTerminado"),
+    object: nil,
+    queue: .main
+  ) { _ in
+    continuation.resume()
   }
-  UIApplication.shared.endBackgroundTask(bgTask)
 }
+
+await MainActor.run {
+  self.bidStatus = "Escuchando..."
+  BidEscuchaManager.instancia?.reiniciarTimerConversacion()
+}
+UIApplication.shared.endBackgroundTask(bgTask)
   bidEscucha?.arrancar()
 }
 
