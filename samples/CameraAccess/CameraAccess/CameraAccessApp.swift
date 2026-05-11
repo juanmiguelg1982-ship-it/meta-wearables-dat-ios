@@ -12,11 +12,17 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   var silencioPlayer: AVAudioPlayer?
 
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-    configurarAudioBackground()
+    configurarAudio()
     return true
   }
 
   func applicationDidEnterBackground(_ application: UIApplication) {
+    try? AVAudioSession.sharedInstance().setCategory(
+      .playAndRecord,
+      mode: .voiceChat,
+      options: [.allowBluetoothHFP, .mixWithOthers]
+    )
+    try? AVAudioSession.sharedInstance().setActive(true)
     silencioPlayer?.play()
   }
 
@@ -24,10 +30,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     silencioPlayer?.play()
   }
 
-  private func configurarAudioBackground() {
+  private func configurarAudio() {
     try? AVAudioSession.sharedInstance().setCategory(
       .playAndRecord,
-      mode: .default,
+      mode: .voiceChat,
       options: [.allowBluetoothHFP, .mixWithOthers]
     )
     try? AVAudioSession.sharedInstance().setActive(true)
@@ -102,7 +108,7 @@ struct CameraAccessApp: App {
           MockDeviceKitView(viewModel: debugMenuViewModel.mockDeviceKitViewModel)
         }
         .overlay {
-          DebgeMenuView(debugMenuViewModel: debugMenuViewModel)
+          DebugMenuView(debugMenuViewModel: debugMenuViewModel)
         }
         #endif
       RegistrationView(viewModel: wearablesViewModel)
