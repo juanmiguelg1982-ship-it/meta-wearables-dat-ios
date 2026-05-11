@@ -43,11 +43,17 @@ final class BidAudioPlayer: NSObject, @unchecked Sendable {
 
 extension BidAudioPlayer: AVAudioPlayerDelegate {
   func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-    // Reanudar escucha cuando termina el audio
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-      BidEscuchaManager.reanudarEngine()
-    }
+  DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+    // Devolver sesión a modo grabación antes de reanudar
+    try? AVAudioSession.sharedInstance().setCategory(
+      .record,
+      mode: .default,
+      options: [.allowBluetooth]
+    )
+    try? AVAudioSession.sharedInstance().setActive(true)
+    BidEscuchaManager.reanudarEngine()
   }
+}
 }
 
 @MainActor
