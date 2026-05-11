@@ -169,6 +169,12 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
   }
 
+  func reiniciarTimerConversacion() {
+  conversacionTimer?.invalidate()
+  conversacionTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
+    self?.terminarConversacion()
+  }
+}
   private func terminarConversacion() {
     envioTimer?.invalidate()
     conversacionTimer?.invalidate()
