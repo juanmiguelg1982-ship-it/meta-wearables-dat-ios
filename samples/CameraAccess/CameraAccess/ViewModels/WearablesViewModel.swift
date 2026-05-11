@@ -204,18 +204,10 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
       return
     }
 
-    onEstado("Procesando...")
+   onEstado("Procesando...")
 
     Task {
       await onPregunta(transcripcion)
-      // Después de responder, seguir en conversación
-      DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-        if self.enConversacion {
-          self.iniciarEscuchaPregunta()
-        } else {
-          self.iniciarEscuchaBID()
-        }
-      }
     }
   }
 
