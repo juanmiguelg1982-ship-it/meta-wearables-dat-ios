@@ -330,8 +330,9 @@ await MainActor.run {
   BidEscuchaManager.instancia?.reiniciarTimerConversacion()
 }
 UIApplication.shared.endBackgroundTask(bgTask)
+  }   
   bidEscucha?.arrancar()
-}
+}     
 
   private func setupDeviceStream() async {
     if let task = deviceStreamTask, !task.isCancelled { task.cancel() }
