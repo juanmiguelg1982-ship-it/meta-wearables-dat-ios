@@ -161,13 +161,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
 
     arrancarEngine()
-
-    // Timer de conversación — 10 segundos sin hablar termina conversación
-    conversacionTimer?.invalidate()
-    conversacionTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
-      self?.terminarConversacion()
     }
-  }
 
   func pausarConversacionTimer() {
   conversacionTimer?.invalidate()
