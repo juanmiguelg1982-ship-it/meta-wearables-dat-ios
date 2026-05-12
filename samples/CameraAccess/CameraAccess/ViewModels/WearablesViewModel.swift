@@ -53,10 +53,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   }
 
   func pausar() {
-    if audioEngine.isRunning { audioEngine.pause() }
+    // No pausar el engine — mantenerlo activo para background
   }
-  // No pausar el engine — mantenerlo activo para background
-}
 
   // MARK: - Fase 1: Esperar "oye"
 
@@ -108,23 +106,23 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   // MARK: - Fase 2: Escuchar pregunta (en conversación)
 
   func reanudar() {
-  guard !grabandoRespuesta else { return }
-  // Mantener silencio activo
-  if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
-    appDelegate.silencioPlayer?.play()
+    guard !grabandoRespuesta else { return }
+    if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+      appDelegate.silencioPlayer?.play()
+    }
+    try? AVAudioSession.sharedInstance().setCategory(
+      .playAndRecord,
+      mode: .voiceChat,
+      options: [.allowBluetoothHFP, .mixWithOthers]
+    )
+    try? AVAudioSession.sharedInstance().setActive(true)
+    if self.enConversacion {
+      self.iniciarEscuchaPregunta()
+    } else {
+      self.iniciarEscuchaBID()
+    }
   }
-  try? AVAudioSession.sharedInstance().setCategory(
-    .playAndRecord,
-    mode: .voiceChat,
-    options: [.allowBluetoothHFP, .mixWithOthers]
-  )
-  try? AVAudioSession.sharedInstance().setActive(true)
-  if self.enConversacion {
-    self.iniciarEscuchaPregunta()
-  } else {
-    self.iniciarEscuchaBID()
-  }
-}
+
   private func iniciarEscuchaPregunta() {
     grabandoRespuesta = true
     ultimoTexto = ""
@@ -142,7 +140,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         let texto = result.bestTranscription.formattedString
         let textoLower = texto.lowercased()
 
-        // Detectar palabras para terminar conversación
         if self.palabrasTerminar.contains(where: { textoLower == $0 || textoLower.hasSuffix(" \($0)") }) {
           DispatchQueue.main.async { self.terminarConversacion() }
           return
@@ -151,7 +148,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         self.ultimoTexto = texto
         DispatchQueue.main.async { self.onEstado("🎤 \(texto)") }
 
-        // Reiniciar timer de envío — 1.5 segundos sin cambios = manda
         if texto != self.textoAnterior {
           self.textoAnterior = texto
           self.envioTimer?.invalidate()
@@ -170,29 +166,31 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
 
     arrancarEngine()
-    }
+  }
 
   func pausarConversacionTimer() {
-  conversacionTimer?.invalidate()
-}
+    conversacionTimer?.invalidate()
+  }
+
   func reiniciarTimerConversacion() {
-  conversacionTimer?.invalidate()
-  conversacionTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
-    self?.terminarConversacion()
+    conversacionTimer?.invalidate()
+    conversacionTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
+      self?.terminarConversacion()
+    }
   }
-}
+
   private func terminarConversacion() {
-  envioTimer?.invalidate()
-  conversacionTimer?.invalidate()
-  grabandoRespuesta = false
-  faseEscucha = false
-  pararEngine()
-  AudioServicesPlaySystemSound(1057)  // pitido fin conversación
-  onEstado("Conversación terminada")
-  DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-    self.iniciarEscuchaBID()
+    envioTimer?.invalidate()
+    conversacionTimer?.invalidate()
+    grabandoRespuesta = false
+    faseEscucha = false
+    pararEngine()
+    AudioServicesPlaySystemSound(1057)
+    onEstado("Conversación terminada")
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+      self.iniciarEscuchaBID()
+    }
   }
-}
 
   private func pararYEnviar() {
     guard grabandoRespuesta else { return }
@@ -214,7 +212,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
       return
     }
 
-   onEstado("Procesando...")
+    onEstado("Procesando...")
 
     Task {
       await onPregunta(transcripcion)
@@ -222,35 +220,35 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   }
 
   private func pararEngine() {
-  envioTimer?.invalidate()
-  recognitionTask?.cancel()
-  recognitionTask = nil
-  recognitionRequest?.endAudio()
-  recognitionRequest = nil
-  // No parar el engine — solo quitar el tap
-  if audioEngine.isRunning {
-    audioEngine.inputNode.removeTap(onBus: 0)
+    envioTimer?.invalidate()
+    recognitionTask?.cancel()
+    recognitionTask = nil
+    recognitionRequest?.endAudio()
+    recognitionRequest = nil
+    if audioEngine.isRunning {
+      audioEngine.inputNode.removeTap(onBus: 0)
+    }
   }
-}
 
   private func arrancarEngine() {
-  let inputNode = audioEngine.inputNode
-  let formato = inputNode.outputFormat(forBus: 0)
-  guard formato.sampleRate > 0 else { return }
+    let inputNode = audioEngine.inputNode
+    let formato = inputNode.outputFormat(forBus: 0)
+    guard formato.sampleRate > 0 else { return }
 
-  inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
-    self?.recognitionRequest?.append(buffer)
-  }
+    inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
+      self?.recognitionRequest?.append(buffer)
+    }
 
-  if !audioEngine.isRunning {
-    do {
-      try audioEngine.start()
-    } catch {
-      DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self.iniciarEscuchaBID() }
+    if !audioEngine.isRunning {
+      do {
+        try audioEngine.start()
+      } catch {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self.iniciarEscuchaBID() }
+      }
     }
   }
 }
-} 
+
 @MainActor
 class WearablesViewModel: ObservableObject {
   @Published var devices: [DeviceIdentifier]
@@ -308,67 +306,63 @@ class WearablesViewModel: ObservableObject {
     setupDeviceStreamTask?.cancel()
   }
 
- func arrancarEscucha() {
-   // Mantener background task permanente
-var bgTaskPermanente: UIBackgroundTaskIdentifier = .invalid
-bgTaskPermanente = UIApplication.shared.beginBackgroundTask {
-  // Cuando iOS avise que va a expirar, renovarlo
-  UIApplication.shared.endBackgroundTask(bgTaskPermanente)
-  bgTaskPermanente = UIApplication.shared.beginBackgroundTask { }
-}
-  guard bidEscucha == nil else { return }
-  bidEscucha = BidEscuchaManager { [weak self] estado in
-    Task { @MainActor in self?.bidStatus = estado }
-  } onPregunta: { [weak self] (texto: String) in
-    guard let self = self else { return }
-    var bgTask: UIBackgroundTaskIdentifier = .invalid
-    bgTask = UIApplication.shared.beginBackgroundTask {
-      UIApplication.shared.endBackgroundTask(bgTask)
+  func arrancarEscucha() {
+    var bgTaskPermanente: UIBackgroundTaskIdentifier = .invalid
+    bgTaskPermanente = UIApplication.shared.beginBackgroundTask {
+      UIApplication.shared.endBackgroundTask(bgTaskPermanente)
+      bgTaskPermanente = UIApplication.shared.beginBackgroundTask { }
     }
-    await MainActor.run {
-      self.bidStatus = "Tú: \(texto)"
-      BidEscuchaManager.instancia?.pausarConversacionTimer()
-    }
-    let vm = StreamSessionViewModel(wearables: self.wearables)
-    await vm.enviarMensajeABid(mensaje: texto)
-
-    // Esperar a que el audio termine - máximo 30 segundos
-    await withCheckedContinuation { continuation in
-      var observador: NSObjectProtocol?
-      var resumido = false
-      observador = NotificationCenter.default.addObserver(
-        forName: NSNotification.Name("BIDAudioTerminado"),
-        object: nil,
-        queue: .main
-      ) { _ in
-        guard !resumido else { return }
-        resumido = true
-        if let obs = observador {
-          NotificationCenter.default.removeObserver(obs)
-          observador = nil
-        }
-        continuation.resume()
+    guard bidEscucha == nil else { return }
+    bidEscucha = BidEscuchaManager { [weak self] estado in
+      Task { @MainActor in self?.bidStatus = estado }
+    } onPregunta: { [weak self] (texto: String) in
+      guard let self = self else { return }
+      var bgTask: UIBackgroundTaskIdentifier = .invalid
+      bgTask = UIApplication.shared.beginBackgroundTask {
+        UIApplication.shared.endBackgroundTask(bgTask)
       }
-      DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) {
-        guard !resumido else { return }
-        resumido = true
-        if let obs = observador {
-          NotificationCenter.default.removeObserver(obs)
-          observador = nil
+      await MainActor.run {
+        self.bidStatus = "Tú: \(texto)"
+        BidEscuchaManager.instancia?.pausarConversacionTimer()
+      }
+      let vm = StreamSessionViewModel(wearables: self.wearables)
+      await vm.enviarMensajeABid(mensaje: texto)
+
+      await withCheckedContinuation { continuation in
+        var observador: NSObjectProtocol?
+        var resumido = false
+        observador = NotificationCenter.default.addObserver(
+          forName: NSNotification.Name("BIDAudioTerminado"),
+          object: nil,
+          queue: .main
+        ) { _ in
+          guard !resumido else { return }
+          resumido = true
+          if let obs = observador {
+            NotificationCenter.default.removeObserver(obs)
+            observador = nil
+          }
+          continuation.resume()
         }
-        continuation.resume()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) {
+          guard !resumido else { return }
+          resumido = true
+          if let obs = observador {
+            NotificationCenter.default.removeObserver(obs)
+            observador = nil
+          }
+          continuation.resume()
+        }
+      }
+
+      await MainActor.run {
+        self.bidStatus = "Escuchando..."
+        BidEscuchaManager.instancia?.reiniciarTimerConversacion()
+        BidEscuchaManager.instancia?.reanudar()
       }
     }
-
-    await MainActor.run {
-      self.bidStatus = "Escuchando..."
-      BidEscuchaManager.instancia?.reiniciarTimerConversacion()
-      BidEscuchaManager.instancia?.reanudar()
-    }
-
+    bidEscucha?.arrancar()
   }
-  bidEscucha?.arrancar()
-}
 
   private func setupDeviceStream() async {
     if let task = deviceStreamTask, !task.isCancelled { task.cancel() }
