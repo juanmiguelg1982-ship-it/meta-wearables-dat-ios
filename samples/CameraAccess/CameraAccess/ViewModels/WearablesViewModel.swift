@@ -4,7 +4,6 @@ import MWDATCore
 import Speech
 import SwiftUI
 
-
 final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private let onEstado: (String) -> Void
   private let onPregunta: (String) async -> Void
@@ -54,9 +53,11 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   }
 
   func pausar() {
+    if audioEngine.isRunning { audioEngine.pause() }
+  }
   // No pausar el engine — mantenerlo activo para background
 }
- 
+
   // MARK: - Fase 1: Esperar "oye"
 
   private func iniciarEscuchaBID() {
@@ -96,13 +97,13 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   // MARK: - Wake word detectado
 
   private func wakeWordDetectado() {
-  guard !grabandoRespuesta else { return }
-  faseEscucha = true
-  enConversacion = true
-  AudioServicesPlaySystemSound(1057)
-  pararEngine()
-  iniciarEscuchaPregunta()
-}
+    guard !grabandoRespuesta else { return }
+    faseEscucha = true
+    enConversacion = true
+    AudioServicesPlaySystemSound(1057)
+    pararEngine()
+    iniciarEscuchaPregunta()
+  }
 
   // MARK: - Fase 2: Escuchar pregunta (en conversación)
 
@@ -226,9 +227,9 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   recognitionTask = nil
   recognitionRequest?.endAudio()
   recognitionRequest = nil
+  // No parar el engine — solo quitar el tap
   if audioEngine.isRunning {
     audioEngine.inputNode.removeTap(onBus: 0)
-    audioEngine.stop()
   }
 }
 
@@ -241,15 +242,15 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     self?.recognitionRequest?.append(buffer)
   }
 
-  do {
-    try audioEngine.start()
-  } catch {
-    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self.iniciarEscuchaBID() }
+  if !audioEngine.isRunning {
+    do {
+      try audioEngine.start()
+    } catch {
+      DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self.iniciarEscuchaBID() }
+    }
   }
 }
-}
-
-
+} 
 @MainActor
 class WearablesViewModel: ObservableObject {
   @Published var devices: [DeviceIdentifier]
@@ -364,7 +365,7 @@ bgTaskPermanente = UIApplication.shared.beginBackgroundTask {
       BidEscuchaManager.instancia?.reiniciarTimerConversacion()
       BidEscuchaManager.instancia?.reanudar()
     }
-    
+
   }
   bidEscucha?.arrancar()
 }
