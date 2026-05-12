@@ -247,8 +247,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self.iniciarEscuchaBID() }
   }
 }
-}
-} 
+
+
 @MainActor
 class WearablesViewModel: ObservableObject {
   @Published var devices: [DeviceIdentifier]
