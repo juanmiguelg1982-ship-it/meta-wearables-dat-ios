@@ -220,26 +220,27 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   }
 
   private func pararEngine() {
-    envioTimer?.invalidate()
-    recognitionTask?.cancel()
-    recognitionTask = nil
-    recognitionRequest?.endAudio()
-    recognitionRequest = nil
-    if audioEngine.isRunning {
-      audioEngine.inputNode.removeTap(onBus: 0)
-      audioEngine.stop()
-    }
+  envioTimer?.invalidate()
+  recognitionTask?.cancel()
+  recognitionTask = nil
+  recognitionRequest?.endAudio()
+  recognitionRequest = nil
+  // No parar el engine — solo quitar el tap
+  if audioEngine.isRunning {
+    audioEngine.inputNode.removeTap(onBus: 0)
   }
+}
 
   private func arrancarEngine() {
-    let inputNode = audioEngine.inputNode
-    let formato = inputNode.outputFormat(forBus: 0)
-    guard formato.sampleRate > 0 else { return }
+  let inputNode = audioEngine.inputNode
+  let formato = inputNode.outputFormat(forBus: 0)
+  guard formato.sampleRate > 0 else { return }
 
-    inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
-      self?.recognitionRequest?.append(buffer)
-    }
+  inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
+    self?.recognitionRequest?.append(buffer)
+  }
 
+  if !audioEngine.isRunning {
     do {
       try audioEngine.start()
     } catch {
