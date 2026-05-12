@@ -95,13 +95,15 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   // MARK: - Wake word detectado
 
   private func wakeWordDetectado() {
-    guard !grabandoRespuesta else { return }
-    faseEscucha = true
-    enConversacion = true
-    AudioServicesPlaySystemSound(1057)
-    pararEngine()
-    iniciarEscuchaPregunta()
-  }
+  guard !grabandoRespuesta else { return }
+  faseEscucha = true
+  enConversacion = true
+  AudioServicesPlaySystemSound(1057)
+  // Subir volumen al máximo al arrancar conversación
+  (MPVolumeView().subviews.first(where: { $0 is UISlider }) as? UISlider)?.value = 1.0
+  pararEngine()
+  iniciarEscuchaPregunta()
+}
 
   // MARK: - Fase 2: Escuchar pregunta (en conversación)
 
