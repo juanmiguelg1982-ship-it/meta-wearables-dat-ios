@@ -40,6 +40,7 @@ final class BidAudioPlayer: NSObject, @unchecked Sendable {
     }
   }
 }
+  }
 
 extension BidAudioPlayer: AVAudioPlayerDelegate {
   func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
