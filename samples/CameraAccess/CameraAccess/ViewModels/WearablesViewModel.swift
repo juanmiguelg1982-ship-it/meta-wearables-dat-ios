@@ -176,16 +176,17 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   }
 }
   private func terminarConversacion() {
-    envioTimer?.invalidate()
-    conversacionTimer?.invalidate()
-    grabandoRespuesta = false
-    faseEscucha = false
-    pararEngine()
-    onEstado("Conversación terminada")
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-      self.iniciarEscuchaBID()
-    }
+  envioTimer?.invalidate()
+  conversacionTimer?.invalidate()
+  grabandoRespuesta = false
+  faseEscucha = false
+  pararEngine()
+  AudioServicesPlaySystemSound(1057)  // pitido fin conversación
+  onEstado("Conversación terminada")
+  DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+    self.iniciarEscuchaBID()
   }
+}
 
   private func pararYEnviar() {
     guard grabandoRespuesta else { return }
