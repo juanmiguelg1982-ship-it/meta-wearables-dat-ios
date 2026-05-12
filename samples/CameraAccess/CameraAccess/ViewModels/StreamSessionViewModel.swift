@@ -20,21 +20,19 @@ final class BidAudioPlayer: NSObject, @unchecked Sendable {
   }
 
   func play(data: Data) {
-    // Pausar el engine de escucha
-    BidEscuchaManager.pausarEngine()
-
-    try? AVAudioSession.sharedInstance().setCategory(
-      .playback,
-      mode: .default,
-      options: [.allowBluetooth]
-    )
-    try? AVAudioSession.sharedInstance().setActive(true)
-
+  BidEscuchaManager.pausarEngine()
+  try? AVAudioSession.sharedInstance().setCategory(
+    .playAndRecord,
+    mode: .voiceChat,
+    options: [.allowBluetoothHFP, .mixWithOthers, .defaultToSpeaker]
+  )
+  try? AVAudioSession.sharedInstance().setActive(true)
+  DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
     do {
-      player = try AVAudioPlayer(data: data)
-      player?.delegate = self
-      player?.prepareToPlay()
-      player?.play()
+      self.player = try AVAudioPlayer(data: data)
+      self.player?.delegate = self
+      self.player?.prepareToPlay()
+      self.player?.play()
     } catch {
       BidEscuchaManager.reanudarEngine()
     }
