@@ -3,7 +3,7 @@ import AudioToolbox
 import MWDATCore
 import Speech
 import SwiftUI
-import MediaPlayer
+
 
 final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private let onEstado: (String) -> Void
