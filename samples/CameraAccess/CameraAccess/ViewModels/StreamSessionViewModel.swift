@@ -20,6 +20,7 @@ final class BidAudioPlayer: NSObject, @unchecked Sendable {
   }
 
   func play(data: Data) {
+  BidEscuchaManager.pausarEngine()
   try? AVAudioSession.sharedInstance().setCategory(
     .playAndRecord,
     mode: .voiceChat,
