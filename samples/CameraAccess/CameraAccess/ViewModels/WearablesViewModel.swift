@@ -363,7 +363,7 @@ bgTaskPermanente = UIApplication.shared.beginBackgroundTask {
       BidEscuchaManager.instancia?.reiniciarTimerConversacion()
       BidEscuchaManager.instancia?.reanudar()
     }
-    UIApplication.shared.endBackgroundTask(bgTask)
+    
   }
   bidEscucha?.arrancar()
 }
