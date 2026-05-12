@@ -226,9 +226,9 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   recognitionTask = nil
   recognitionRequest?.endAudio()
   recognitionRequest = nil
-  // No parar el engine — solo quitar el tap
   if audioEngine.isRunning {
     audioEngine.inputNode.removeTap(onBus: 0)
+    audioEngine.stop()
   }
 }
 
@@ -241,13 +241,12 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     self?.recognitionRequest?.append(buffer)
   }
 
-  if !audioEngine.isRunning {
-    do {
-      try audioEngine.start()
-    } catch {
-      DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self.iniciarEscuchaBID() }
-    }
+  do {
+    try audioEngine.start()
+  } catch {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self.iniciarEscuchaBID() }
   }
+}
 }
 } 
 @MainActor
