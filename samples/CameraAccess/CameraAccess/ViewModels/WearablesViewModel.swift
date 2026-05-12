@@ -301,6 +301,13 @@ class WearablesViewModel: ObservableObject {
   }
 
  func arrancarEscucha() {
+   // Mantener background task permanente
+var bgTaskPermanente: UIBackgroundTaskIdentifier = .invalid
+bgTaskPermanente = UIApplication.shared.beginBackgroundTask {
+  // Cuando iOS avise que va a expirar, renovarlo
+  UIApplication.shared.endBackgroundTask(bgTaskPermanente)
+  bgTaskPermanente = UIApplication.shared.beginBackgroundTask { }
+}
   guard bidEscucha == nil else { return }
   bidEscucha = BidEscuchaManager { [weak self] estado in
     Task { @MainActor in self?.bidStatus = estado }
