@@ -17,14 +17,18 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   }
 
   func applicationDidEnterBackground(_ application: UIApplication) {
-    try? AVAudioSession.sharedInstance().setCategory(
-      .playAndRecord,
-      mode: .voiceChat,
-      options: [.allowBluetoothHFP, .mixWithOthers]
-    )
-    try? AVAudioSession.sharedInstance().setActive(true)
-    silencioPlayer?.play()
+  var bgTask: UIBackgroundTaskIdentifier = .invalid
+  bgTask = UIApplication.shared.beginBackgroundTask {
+    UIApplication.shared.endBackgroundTask(bgTask)
   }
+  try? AVAudioSession.sharedInstance().setCategory(
+    .playAndRecord,
+    mode: .voiceChat,
+    options: [.allowBluetoothHFP, .mixWithOthers]
+  )
+  try? AVAudioSession.sharedInstance().setActive(true)
+  silencioPlayer?.play()
+}
 
   func applicationWillEnterForeground(_ application: UIApplication) {
     silencioPlayer?.play()
