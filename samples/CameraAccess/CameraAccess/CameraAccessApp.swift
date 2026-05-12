@@ -1,6 +1,7 @@
 import AVFoundation
 import Foundation
 import MWDATCore
+import PushKit
 import SwiftUI
 import UIKit
 
@@ -8,27 +9,73 @@ import UIKit
 import MWDATMockDevice
 #endif
 
-class AppDelegate: NSObject, UIApplicationDelegate {
+class AppDelegate: NSObject, UIApplicationDelegate, PKPushRegistryDelegate {
   var silencioPlayer: AVAudioPlayer?
+  var voipRegistry: PKPushRegistry?
+  var voipToken: String?
 
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
     configurarAudio()
+    registrarVoIP()
     return true
   }
 
-  func applicationDidEnterBackground(_ application: UIApplication) {
-  var bgTask: UIBackgroundTaskIdentifier = .invalid
-  bgTask = UIApplication.shared.beginBackgroundTask {
-    UIApplication.shared.endBackgroundTask(bgTask)
+  func registrarVoIP() {
+    voipRegistry = PKPushRegistry(queue: .main)
+    voipRegistry?.delegate = self
+    voipRegistry?.desiredPushTypes = [.voIP]
   }
-  try? AVAudioSession.sharedInstance().setCategory(
-    .playAndRecord,
-    mode: .voiceChat,
-    options: [.allowBluetoothHFP, .mixWithOthers]
-  )
-  try? AVAudioSession.sharedInstance().setActive(true)
-  silencioPlayer?.play()
-}
+
+  // MARK: - PKPushRegistryDelegate
+
+  func pushRegistry(_ registry: PKPushRegistry, didUpdate pushCredentials: PKPushCredentials, for type: PKPushType) {
+    let token = pushCredentials.token.map { String(format: "%02x", $0) }.joined()
+    voipToken = token
+    print("[BID VoIP] Token: \(token)")
+    // Enviar token al servidor
+    guard let url = URL(string: "https://bidjuanmi.com/voip-token") else { return }
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = try? JSONSerialization.data(withJSONObject: ["token": token])
+    URLSession.shared.dataTask(with: request).resume()
+  }
+
+  func pushRegistry(_ registry: PKPushRegistry, didReceiveIncomingPushWith payload: PKPushPayload, for type: PKPushType, completion: @escaping () -> Void) {
+    // iOS despierta la app — arrancar escucha
+    DispatchQueue.main.async {
+      BidEscuchaManager.instancia?.reanudar()
+    }
+    completion()
+  }
+
+  func pushRegistry(_ registry: PKPushRegistry, didInvalidatePushTokenFor type: PKPushType) {
+    voipToken = nil
+  }
+
+  func applicationDidEnterBackground(_ application: UIApplication) {
+    var bgTask: UIBackgroundTaskIdentifier = .invalid
+    bgTask = UIApplication.shared.beginBackgroundTask {
+      UIApplication.shared.endBackgroundTask(bgTask)
+    }
+    try? AVAudioSession.sharedInstance().setCategory(
+      .playAndRecord,
+      mode: .voiceChat,
+      options: [.allowBluetoothHFP, .mixWithOthers]
+    )
+    try? AVAudioSession.sharedInstance().setActive(true)
+    silencioPlayer?.play()
+  }
+
+  func applicationWillResignActive(_ application: UIApplication) {
+    try? AVAudioSession.sharedInstance().setCategory(
+      .playAndRecord,
+      mode: .voiceChat,
+      options: [.allowBluetoothHFP, .mixWithOthers]
+    )
+    try? AVAudioSession.sharedInstance().setActive(true)
+    silencioPlayer?.play()
+  }
 
   func applicationWillEnterForeground(_ application: UIApplication) {
     silencioPlayer?.play()
