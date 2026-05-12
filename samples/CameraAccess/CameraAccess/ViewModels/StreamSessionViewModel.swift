@@ -38,7 +38,7 @@ final class BidAudioPlayer: NSObject, @unchecked Sendable {
       self.player?.play()
     } catch {
       BidEscuchaManager.reanudarEngine()
-}
+    }
   }
 }
 
