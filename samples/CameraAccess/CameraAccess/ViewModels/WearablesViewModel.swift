@@ -53,8 +53,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   }
 
   func pausar() {
-    if audioEngine.isRunning { audioEngine.pause() }
-  }
+  // No pausar el engine — mantenerlo activo para background
+}
  
   // MARK: - Fase 1: Esperar "oye"
 
