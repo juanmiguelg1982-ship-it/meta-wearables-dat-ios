@@ -107,6 +107,10 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 
   func reanudar() {
   guard !grabandoRespuesta else { return }
+  // Mantener silencio activo
+  if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+    appDelegate.silencioPlayer?.play()
+  }
   try? AVAudioSession.sharedInstance().setCategory(
     .playAndRecord,
     mode: .voiceChat,
