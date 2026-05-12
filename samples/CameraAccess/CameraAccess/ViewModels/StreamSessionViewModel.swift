@@ -20,24 +20,25 @@ final class BidAudioPlayer: NSObject, @unchecked Sendable {
   }
 
   func play(data: Data) {
-  BidEscuchaManager.pausarEngine()
-  try? AVAudioSession.sharedInstance().setCategory(
-    .playAndRecord,
-    mode: .voiceChat,
-    options: [.allowBluetoothHFP, .mixWithOthers, .defaultToSpeaker]
-  )
-  try? AVAudioSession.sharedInstance().setActive(true)
-  DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-    if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
-      appDelegate.silencioPlayer?.play()
-    }
-    do {
-      self.player = try AVAudioPlayer(data: data)
-      self.player?.delegate = self
-      self.player?.prepareToPlay()
-      self.player?.play()
-    } catch {
-      BidEscuchaManager.reanudarEngine()
+    BidEscuchaManager.pausarEngine()
+    try? AVAudioSession.sharedInstance().setCategory(
+      .playAndRecord,
+      mode: .voiceChat,
+      options: [.allowBluetoothHFP, .mixWithOthers, .defaultToSpeaker]
+    )
+    try? AVAudioSession.sharedInstance().setActive(true)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+      if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+        appDelegate.silencioPlayer?.play()
+      }
+      do {
+        self.player = try AVAudioPlayer(data: data)
+        self.player?.delegate = self
+        self.player?.prepareToPlay()
+        self.player?.play()
+      } catch {
+        BidEscuchaManager.reanudarEngine()
+      }
     }
   }
 }
@@ -53,6 +54,7 @@ extension BidAudioPlayer: AVAudioPlayerDelegate {
     }
   }
 }
+
 @MainActor
 final class StreamSessionViewModel: ObservableObject {
   @Published var currentVideoFrame: UIImage?
