@@ -100,8 +100,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   faseEscucha = true
   enConversacion = true
   AudioServicesPlaySystemSound(1057)
-  // Subir volumen al máximo al arrancar conversación
-  (MPVolumeView().subviews.first(where: { $0 is UISlider }) as? UISlider)?.value = 1.0
   pararEngine()
   iniciarEscuchaPregunta()
 }
