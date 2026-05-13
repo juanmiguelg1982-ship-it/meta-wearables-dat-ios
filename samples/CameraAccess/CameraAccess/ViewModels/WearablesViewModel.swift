@@ -20,6 +20,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private var textoAnterior = ""
   private var faseEscucha = false
   private var enConversacion = false
+  private var ultimoResultado: Date = Date()
+  private var vigilanteTask: Task<Void, Never>?
 
   static var instancia: BidEscuchaManager?
   static func pausarEngine() { instancia?.pausar() }
@@ -82,6 +84,25 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
   }
 
+  // MARK: - Vigilante de silencio
+
+  private func arrancarVigilante() {
+    vigilanteTask?.cancel()
+    ultimoResultado = Date()
+    vigilanteTask = Task { [weak self] in
+      while !Task.isCancelled {
+        try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 segundos
+        guard let self = self, !self.enConversacion, !self.grabandoRespuesta else { continue }
+        let segundosSinResultado = Date().timeIntervalSince(self.ultimoResultado)
+        if segundosSinResultado > 30 {
+          await MainActor.run {
+            self.iniciarEscuchaBID()
+          }
+        }
+      }
+    }
+  }
+
   // MARK: - Fase 1: Esperar "oye"
 
   private func iniciarEscuchaBID() {
@@ -101,9 +122,12 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     guard let req = recognitionRequest else { return }
     req.shouldReportPartialResults = true
 
+    ultimoResultado = Date()
+
     recognitionTask = speechRecognizer?.recognitionTask(with: req) { [weak self] result, error in
       guard let self = self, !self.faseEscucha else { return }
       if let result = result {
+        self.ultimoResultado = Date()
         let texto = result.bestTranscription.formattedString.lowercased()
         if self.palabrasActivacion.contains(where: { texto.contains($0) }) {
           DispatchQueue.main.async { self.wakeWordDetectado() }
@@ -116,14 +140,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 
     arrancarEngine()
     onEstado("Escuchando... di OYE")
-
-    Task { [weak self] in
-      try? await Task.sleep(nanoseconds: 20_000_000_000)
-      guard let self = self, !self.enConversacion else { return }
-      await MainActor.run {
-        self.iniciarEscuchaBID()
-      }
-    }
+    arrancarVigilante()
   }
 
   // MARK: - Wake word detectado
@@ -132,6 +149,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     guard !grabandoRespuesta else { return }
     faseEscucha = true
     enConversacion = true
+    vigilanteTask?.cancel()
     AudioServicesPlaySystemSound(1057)
     pararEngine()
     iniciarEscuchaPregunta()
@@ -254,6 +272,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   }
 
   private func pararEngine() {
+    vigilanteTask?.cancel()
     envioTimer?.invalidate()
     recognitionTask?.cancel()
     recognitionTask = nil
