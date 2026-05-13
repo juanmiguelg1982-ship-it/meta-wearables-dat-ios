@@ -16,7 +16,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private var silenceTimer: Timer?
   private var envioTimer: Timer?
   private var conversacionTimer: Timer?
-  private var reinicioTimer: Timer?
   private var ultimoTexto = ""
   private var textoAnterior = ""
   private var faseEscucha = false
@@ -89,7 +88,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     enConversacion = false
     faseEscucha = false
     conversacionTimer?.invalidate()
-    reinicioTimer?.invalidate()
     pararEngine()
 
     try? AVAudioSession.sharedInstance().setCategory(
@@ -119,9 +117,12 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     arrancarEngine()
     onEstado("Escuchando... di OYE")
 
-    reinicioTimer = Timer.scheduledTimer(withTimeInterval: 20.0, repeats: false) { [weak self] _ in
+    Task { [weak self] in
+      try? await Task.sleep(nanoseconds: 20_000_000_000)
       guard let self = self, !self.enConversacion else { return }
-      self.iniciarEscuchaBID()
+      await MainActor.run {
+        self.iniciarEscuchaBID()
+      }
     }
   }
 
