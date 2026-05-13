@@ -9,7 +9,7 @@ import UIKit
 import MWDATMockDevice
 #endif
 
-class AppDelegate: NSObject, UIApplicationDelegate, PKPushRegistryDelegate {
+class AppDelegate: NSObject, UIApplicationDelegate, PKPushRegistryDelegate, AVAudioPlayerDelegate {
   var silencioPlayer: AVAudioPlayer?
   var voipRegistry: PKPushRegistry?
   var voipToken: String?
@@ -26,13 +26,21 @@ class AppDelegate: NSObject, UIApplicationDelegate, PKPushRegistryDelegate {
     voipRegistry?.desiredPushTypes = [.voIP]
   }
 
+  // MARK: - AVAudioPlayerDelegate — heartbeat cada 0.5s
+
+  func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+    // Reiniciar el audio silencioso
+    player.play()
+    // Comprobar si SFSpeechRecognizer necesita reinicio
+    BidEscuchaManager.instancia?.comprobarYReiniciarSiNecesario()
+  }
+
   // MARK: - PKPushRegistryDelegate
 
   func pushRegistry(_ registry: PKPushRegistry, didUpdate pushCredentials: PKPushCredentials, for type: PKPushType) {
     let token = pushCredentials.token.map { String(format: "%02x", $0) }.joined()
     voipToken = token
     print("[BID VoIP] Token: \(token)")
-    // Enviar token al servidor
     guard let url = URL(string: "https://bidjuanmi.com/voip-token") else { return }
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
@@ -42,7 +50,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, PKPushRegistryDelegate {
   }
 
   func pushRegistry(_ registry: PKPushRegistry, didReceiveIncomingPushWith payload: PKPushPayload, for type: PKPushType, completion: @escaping () -> Void) {
-    // iOS despierta la app — arrancar escucha
     DispatchQueue.main.async {
       BidEscuchaManager.instancia?.reanudar()
     }
@@ -115,14 +122,14 @@ class AppDelegate: NSObject, UIApplicationDelegate, PKPushRegistryDelegate {
     try? wav.write(to: url)
 
     if let player = try? AVAudioPlayer(contentsOf: url) {
-      player.numberOfLoops = -1
+      player.numberOfLoops = 0  // Sin loop — el delegate lo reinicia manualmente
       player.volume = 0.0
+      player.delegate = self
       player.play()
       silencioPlayer = player
     }
   }
 }
-
 @main
 struct CameraAccessApp: App {
   @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
