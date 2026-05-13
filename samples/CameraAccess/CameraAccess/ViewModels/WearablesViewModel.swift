@@ -38,6 +38,15 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     BidEscuchaManager.instancia = self
   }
 
+  func comprobarYReiniciarSiNecesario() {
+    guard !enConversacion, !grabandoRespuesta else { return }
+    let segundos = Date().timeIntervalSince(ultimoResultado)
+    if segundos > 30 {
+        DispatchQueue.main.async {
+            self.iniciarEscuchaBID()
+        }
+    }
+}
   func arrancar() {
     try? AVAudioSession.sharedInstance().setCategory(
       .playAndRecord,
