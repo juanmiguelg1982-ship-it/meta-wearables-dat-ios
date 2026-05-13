@@ -9,9 +9,7 @@ struct BidWebView: UIViewRepresentable {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
         let webView = WKWebView(frame: .zero, configuration: config)
-        var request = URLRequest(url: url)
-        request.setValue("bid-app-token-juanmi", forHTTPHeaderField: "X-Bid-App")
-        webView.load(request)
+        webView.load(URLRequest(url: URL(string: "https://bidjuanmi.com?app_token=bid-app-token-juanmi")!))
         return webView
     }
     
