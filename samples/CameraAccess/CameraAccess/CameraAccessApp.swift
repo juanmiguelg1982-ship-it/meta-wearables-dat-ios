@@ -97,7 +97,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, PKPushRegistryDelegate, AVAu
     try? AVAudioSession.sharedInstance().setActive(true)
 
     let sampleRate = 44100.0
-    let numSamples = Int(sampleRate * 0.5)
+    let numSamples = Int(sampleRate * 0.1)
     var silencio = [Float](repeating: 0.0, count: numSamples)
     let data = Data(bytes: &silencio, count: numSamples * 4)
     guard let url = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("silencio.wav") else { return }
