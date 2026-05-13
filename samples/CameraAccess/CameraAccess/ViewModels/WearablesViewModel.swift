@@ -119,7 +119,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     arrancarEngine()
     onEstado("Escuchando... di OYE")
 
-    reinicioTimer = Timer.scheduledTimer(withTimeInterval: 50.0, repeats: false) { [weak self] _ in
+    reinicioTimer = Timer.scheduledTimer(withTimeInterval: 20.0, repeats: false) { [weak self] _ in
       guard let self = self, !self.enConversacion else { return }
       self.iniciarEscuchaBID()
     }
