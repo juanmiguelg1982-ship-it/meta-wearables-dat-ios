@@ -16,6 +16,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private var silenceTimer: Timer?
   private var envioTimer: Timer?
   private var conversacionTimer: Timer?
+  private var reinicioTimer: Timer?
   private var ultimoTexto = ""
   private var textoAnterior = ""
   private var faseEscucha = false
@@ -44,6 +45,13 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     )
     try? AVAudioSession.sharedInstance().setActive(true)
 
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(manejarInterrupcionAudio),
+      name: AVAudioSession.interruptionNotification,
+      object: nil
+    )
+
     SFSpeechRecognizer.requestAuthorization { [weak self] status in
       guard status == .authorized else { return }
       DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
@@ -56,12 +64,32 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     // No pausar el engine — mantenerlo activo para background
   }
 
+  @objc private func manejarInterrupcionAudio(_ notification: Notification) {
+    guard let info = notification.userInfo,
+          let tipoValor = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+          let tipo = AVAudioSession.InterruptionType(rawValue: tipoValor) else { return }
+
+    if tipo == .ended {
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+          appDelegate.silencioPlayer?.play()
+        }
+        if self.enConversacion {
+          self.iniciarEscuchaPregunta()
+        } else {
+          self.iniciarEscuchaBID()
+        }
+      }
+    }
+  }
+
   // MARK: - Fase 1: Esperar "oye"
 
   private func iniciarEscuchaBID() {
     enConversacion = false
     faseEscucha = false
     conversacionTimer?.invalidate()
+    reinicioTimer?.invalidate()
     pararEngine()
 
     try? AVAudioSession.sharedInstance().setCategory(
@@ -90,6 +118,11 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 
     arrancarEngine()
     onEstado("Escuchando... di OYE")
+
+    reinicioTimer = Timer.scheduledTimer(withTimeInterval: 50.0, repeats: false) { [weak self] _ in
+      guard let self = self, !self.enConversacion else { return }
+      self.iniciarEscuchaBID()
+    }
   }
 
   // MARK: - Wake word detectado
