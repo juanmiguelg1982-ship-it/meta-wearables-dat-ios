@@ -11,20 +11,24 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var lon: Double = 0
 
     override init() {
-        super.init()
-        manager.delegate = self
-        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-        manager.requestAlwaysAuthorization()
-        manager.startUpdatingLocation()
-        manager.allowsBackgroundLocationUpdates = true
-        manager.pausesLocationUpdatesAutomatically = false
-    }
+    super.init()
+    manager.delegate = self
+    manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+    manager.distanceFilter = 200
+    manager.requestAlwaysAuthorization()
+    manager.startUpdatingLocation()
+    manager.allowsBackgroundLocationUpdates = true
+    manager.pausesLocationUpdatesAutomatically = false
+}
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let loc = locations.last else { return }
-        lat = loc.coordinate.latitude
-        lon = loc.coordinate.longitude
-    }
+    guard let loc = locations.last else { return }
+    lat = loc.coordinate.latitude
+    lon = loc.coordinate.longitude
+    // Mandar al servidor cuando hay cambio de ubicación
+    guard let url = URL(string: "https://bidjuanmi.com/ubicacion?lat=\(lat)&lon=\(lon)") else { return }
+    URLSession.shared.dataTask(with: url).resume()
+}
 }
 
 // MARK: - Web View
@@ -286,16 +290,7 @@ struct BidStatusView: View {
                     .padding(.vertical, 8)
                     .background(Color.black.opacity(0.5))
                     .cornerRadius(6)
-                    .padding(.bottom, 40)
-            }
-        }
-        .onAppear {
-            Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { _ in
-                let lat = locationManager.lat
-                let lon = locationManager.lon
-                guard lat != 0, lon != 0 else { return }
-                guard let url = URL(string: "https://bidjuanmi.com/ubicacion?lat=\(lat)&lon=\(lon)") else { return }
-                URLSession.shared.dataTask(with: url).resume()
+                    .padding(.bottom, 40) 
             }
         }
     }
