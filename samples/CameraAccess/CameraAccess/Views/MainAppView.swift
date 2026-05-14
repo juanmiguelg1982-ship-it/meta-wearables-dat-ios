@@ -54,8 +54,8 @@ class ChatViewModel: ObservableObject {
     @Published var cargando = false
     @Published var textoEscrito = ""
     var locationManager: LocationManager?
-    private var borradoManualmente = false
-    private var cargadoUnaVez = false
+    var borradoManualmente = false
+    var cargadoUnaVez = false
 
     func cargarHistorial() {
         guard !borradoManualmente, !cargadoUnaVez else { return }
