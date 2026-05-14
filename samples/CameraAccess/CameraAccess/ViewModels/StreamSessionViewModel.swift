@@ -186,10 +186,11 @@ final class StreamSessionViewModel: ObservableObject {
     case .waitingForDevice, .starting, .stopping, .paused:
       streamingStatus = .waiting
     case .streaming:
-      streamingStatus = .streaming
-      if respuestaParaFoto {
+    streamingStatus = .streaming
+    if respuestaParaFoto {
         capturePhoto()
-      }
+        await enviarMensajeABid(mensaje: "Foto capturada, analizando...")
+    }
     }
   }
 
