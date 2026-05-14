@@ -22,7 +22,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private var enConversacion = false
   private var ultimoResultado: Date = Date()
   private var vigilanteTask: Task<Void, Never>?
-
+  private var streamVM: StreamSessionViewModel?
+  
   static var instancia: BidEscuchaManager?
   static func pausarEngine() { instancia?.pausar() }
   static func reanudarEngine() { instancia?.reanudar() }
@@ -367,6 +368,9 @@ class WearablesViewModel: ObservableObject {
       UIApplication.shared.endBackgroundTask(bgTaskPermanente)
       bgTaskPermanente = UIApplication.shared.beginBackgroundTask { }
     }
+    if streamVM == nil {
+    streamVM = StreamSessionViewModel(wearables: wearables)
+}
     guard bidEscucha == nil else { return }
     bidEscucha = BidEscuchaManager { [weak self] estado in
       Task { @MainActor in self?.bidStatus = estado }
@@ -380,10 +384,10 @@ class WearablesViewModel: ObservableObject {
         self.bidStatus = "Tú: \(texto)"
         BidEscuchaManager.instancia?.pausarConversacionTimer()
       }
-      let vm = StreamSessionViewModel(wearables: self.wearables)
+      let vm = self.streamVM ?? StreamSessionViewModel(wearables: self.wearables)
       await vm.enviarMensajeABid(mensaje: texto)
       if vm.respuestaParaFoto {
-        await vm.handleStartStreaming()
+          await vm.handleStartStreaming()
       }
 
       await withCheckedContinuation { continuation in
