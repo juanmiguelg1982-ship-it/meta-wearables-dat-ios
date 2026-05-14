@@ -39,7 +39,9 @@ struct BidWebView: UIViewRepresentable {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
         let webView = WKWebView(frame: .zero, configuration: config)
-        webView.load(URLRequest(url: URL(string: "https://bidjuanmi.com?app_token=bid-app-token-juanmi")!))
+        var request = URLRequest(url: URL(string: "https://bidjuanmi.com?app_token=bid-app-token-juanmi")!)
+        request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+        webView.load(request)
         return webView
     }
     func updateUIView(_ uiView: WKWebView, context: Context) {}
