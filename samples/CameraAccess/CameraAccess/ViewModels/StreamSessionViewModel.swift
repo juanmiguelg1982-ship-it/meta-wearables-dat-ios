@@ -214,11 +214,15 @@ final class StreamSessionViewModel: ObservableObject {
     if message != errorMessage { showErrorMsg(message) }
   }
 
-  func enviarMensajeABid(mensaje: String) async {
+  func enviarMensajeABid(mensaje: String, lat: Double = 0, lon: Double = 0) async {
     guard var components = URLComponents(string: "https://bidjuanmi.com/chat-stream") else { return }
-    components.queryItems = [URLQueryItem(name: "message", value: mensaje)]
+    var queryItems = [URLQueryItem(name: "message", value: mensaje)]
+    if lat != 0 && lon != 0 {
+        queryItems.append(URLQueryItem(name: "lat", value: String(lat)))
+        queryItems.append(URLQueryItem(name: "lon", value: String(lon)))
+    }
+    components.queryItems = queryItems
     guard let url = components.url else { return }
-
     var textoCompleto = ""
     do {
       let (asyncBytes, _) = try await URLSession.shared.bytes(from: url)
@@ -233,11 +237,10 @@ final class StreamSessionViewModel: ObservableObject {
         }
       }
     } catch { return }
-
     if !textoCompleto.isEmpty {
       await reproducirAudio(texto: textoCompleto)
     }
-  }
+}
 
   func reproducirAudio(texto: String) async {
     guard var components = URLComponents(string: "https://bidjuanmi.com/tts") else { return }
