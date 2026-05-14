@@ -187,6 +187,9 @@ final class StreamSessionViewModel: ObservableObject {
       streamingStatus = .waiting
     case .streaming:
       streamingStatus = .streaming
+      if respuestaParaFoto {
+        capturePhoto()
+      }
     }
   }
 
