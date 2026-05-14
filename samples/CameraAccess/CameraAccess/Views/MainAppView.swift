@@ -54,8 +54,12 @@ class ChatViewModel: ObservableObject {
     @Published var cargando = false
     @Published var textoEscrito = ""
     var locationManager: LocationManager?
+    private var borradoManualmente = false
+    private var cargadoUnaVez = false
 
     func cargarHistorial() {
+        guard !borradoManualmente, !cargadoUnaVez else { return }
+        cargadoUnaVez = true
         cargando = true
         guard let url = URL(string: "https://bidjuanmi.com/historial") else { return }
         URLSession.shared.dataTask(with: url) { data, _, _ in
@@ -79,6 +83,7 @@ class ChatViewModel: ObservableObject {
     }
 
     func borrarHistorial() {
+        borradoManualmente = true
         guard let url = URL(string: "https://bidjuanmi.com/historial") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
@@ -147,6 +152,8 @@ struct ChatView: View {
                     }
                     .padding(.trailing, 8)
                     Button {
+                        vm.cargadoUnaVez = false
+                        vm.borradoManualmente = false
                         vm.cargarHistorial()
                     } label: {
                         Image(systemName: "arrow.clockwise")
@@ -250,7 +257,6 @@ struct BidStatusView: View {
             VStack(spacing: 0) {
                 Spacer()
 
-                // Logo BID
                 VStack(spacing: 16) {
                     ZStack {
                         Circle()
@@ -273,7 +279,6 @@ struct BidStatusView: View {
 
                 Spacer()
 
-                // Status
                 Text(viewModel.bidStatus)
                     .font(.system(size: 12, design: .monospaced))
                     .foregroundColor(.yellow)
@@ -284,13 +289,12 @@ struct BidStatusView: View {
                     .padding(.bottom, 40)
             }
         }
-        // Enviar ubicación al servidor cada 5 minutos
         .onAppear {
             Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { _ in
                 let lat = locationManager.lat
                 let lon = locationManager.lon
                 guard lat != 0, lon != 0 else { return }
-                guard let url = URL(string: "https://bidjuanmi.com/chat-stream?message=ubicacion_background&lat=\(lat)&lon=\(lon)") else { return }
+                guard let url = URL(string: "https://bidjuanmi.com/ubicacion?lat=\(lat)&lon=\(lon)") else { return }
                 URLSession.shared.dataTask(with: url).resume()
             }
         }
@@ -313,7 +317,6 @@ struct MainAppView: View {
 
     var body: some View {
         TabView {
-            // Pestaña 1 — BID
             BidStatusView(viewModel: viewModel)
                 .onAppear { viewModel.arrancarEscucha() }
                 .tabItem {
@@ -321,14 +324,12 @@ struct MainAppView: View {
                     Text("BID")
                 }
 
-            // Pestaña 2 — Chat
             ChatView()
                 .tabItem {
                     Image(systemName: "bubble.left.and.bubble.right")
                     Text("CHAT")
                 }
 
-            // Pestaña 3 — Panel web
             BidWebView(url: URL(string: "https://bidjuanmi.com?app_token=bid-app-token-juanmi")!)
                 .ignoresSafeArea()
                 .tabItem {
