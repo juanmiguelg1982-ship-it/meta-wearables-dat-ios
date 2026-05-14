@@ -203,11 +203,23 @@ final class StreamSessionViewModel: ObservableObject {
   func handlePhotoData(_ data: PhotoData) async {
     isCapturingPhoto = false
     if let image = UIImage(data: data.data) {
-      capturedPhoto = image
-      showPhotoPreview = true
-      await enviarMensajeABid(mensaje: "Foto capturada desde mis gafas Ray-Ban Meta")
+        capturedPhoto = image
+        showPhotoPreview = true
+        // Mandar imagen al servidor para análisis
+        guard let url = URL(string: "https://bidjuanmi.com/analizar-imagen") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+        request.httpBody = data.data
+        do {
+            let (responseData, _) = try await URLSession.shared.data(for: request)
+            if let json = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
+               let descripcion = json["descripcion"] as? String {
+                await reproducirAudio(texto: descripcion)
+            }
+        } catch { return }
     }
-  }
+}
 
   func handleError(_ error: StreamSessionError) async {
     let message = formatError(error)
