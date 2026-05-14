@@ -46,7 +46,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
             self.iniciarEscuchaBID()
         }
     }
-}
+  }
+
   func arrancar() {
     try? AVAudioSession.sharedInstance().setCategory(
       .playAndRecord,
@@ -93,14 +94,12 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
   }
 
-  // MARK: - Vigilante de silencio
-
   private func arrancarVigilante() {
     vigilanteTask?.cancel()
     ultimoResultado = Date()
     vigilanteTask = Task { [weak self] in
       while !Task.isCancelled {
-        try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 segundos
+        try? await Task.sleep(nanoseconds: 5_000_000_000)
         guard let self = self, !self.enConversacion, !self.grabandoRespuesta else { continue }
         let segundosSinResultado = Date().timeIntervalSince(self.ultimoResultado)
         if segundosSinResultado > 30 {
@@ -111,8 +110,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
       }
     }
   }
-
-  // MARK: - Fase 1: Esperar "oye"
 
   private func iniciarEscuchaBID() {
     enConversacion = false
@@ -152,8 +149,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     arrancarVigilante()
   }
 
-  // MARK: - Wake word detectado
-
   private func wakeWordDetectado() {
     guard !grabandoRespuesta else { return }
     faseEscucha = true
@@ -163,8 +158,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     pararEngine()
     iniciarEscuchaPregunta()
   }
-
-  // MARK: - Fase 2: Escuchar pregunta (en conversación)
 
   func reanudar() {
     guard !grabandoRespuesta else { return }
@@ -387,16 +380,11 @@ class WearablesViewModel: ObservableObject {
         self.bidStatus = "Tú: \(texto)"
         BidEscuchaManager.instancia?.pausarConversacionTimer()
       }
-    let vm = StreamSessionViewModel(wearables: self.wearables)
-    await vm.enviarMensajeABid(mensaje: texto)
-    // Si la respuesta fue [FOTO], activar captura
-    if vm.respuestaParaFoto {
-    await vm.handleStartStreaming()
-    try? await Task.sleep(nanoseconds: 3_000_000_000)
-    vm.capturePhoto()
-    try? await Task.sleep(nanoseconds: 2_000_000_000)
-    await vm.stopSession()
-}
+      let vm = StreamSessionViewModel(wearables: self.wearables)
+      await vm.enviarMensajeABid(mensaje: texto)
+      if vm.respuestaParaFoto {
+        await vm.handleStartStreaming()
+      }
 
       await withCheckedContinuation { continuation in
         var observador: NSObjectProtocol?
