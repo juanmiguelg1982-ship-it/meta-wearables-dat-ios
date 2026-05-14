@@ -63,7 +63,7 @@ final class StreamSessionViewModel: ObservableObject {
   @Published var isCapturingPhoto: Bool = false
   @Published var hasActiveDevice: Bool = false
   @Published var isDeviceSessionReady: Bool = false
-
+  @Published var respuestaParaFoto = false
   var isStreaming: Bool { streamingStatus != .stopped }
 
   private let sessionManager: DeviceSessionManager
