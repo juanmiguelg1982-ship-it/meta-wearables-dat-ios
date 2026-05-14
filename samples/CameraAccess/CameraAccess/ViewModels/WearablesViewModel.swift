@@ -22,7 +22,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private var enConversacion = false
   private var ultimoResultado: Date = Date()
   private var vigilanteTask: Task<Void, Never>?
-  private var streamVM: StreamSessionViewModel?
+  
   
   static var instancia: BidEscuchaManager?
   static func pausarEngine() { instancia?.pausar() }
@@ -320,7 +320,8 @@ class WearablesViewModel: ObservableObject {
   private let wearables: WearablesInterface
   private var compatibilityListenerTokens: [DeviceIdentifier: AnyListenerToken] = [:]
   private var bidEscucha: BidEscuchaManager?
-
+  private var streamVM: StreamSessionViewModel?
+  
   init(wearables: WearablesInterface) {
     self.wearables = wearables
     self.devices = wearables.devices
