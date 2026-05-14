@@ -1,6 +1,31 @@
+import CoreLocation
 import MWDATCore
 import SwiftUI
 import WebKit
+
+// MARK: - Geolocalización
+
+class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
+    private let manager = CLLocationManager()
+    @Published var lat: Double = 0
+    @Published var lon: Double = 0
+
+    override init() {
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        manager.requestAlwaysAuthorization()
+        manager.startUpdatingLocation()
+        manager.allowsBackgroundLocationUpdates = true
+        manager.pausesLocationUpdatesAutomatically = false
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let loc = locations.last else { return }
+        lat = loc.coordinate.latitude
+        lon = loc.coordinate.longitude
+    }
+}
 
 // MARK: - Web View
 
@@ -28,6 +53,7 @@ class ChatViewModel: ObservableObject {
     @Published var mensajes: [Mensaje] = []
     @Published var cargando = false
     @Published var textoEscrito = ""
+    var locationManager: LocationManager?
 
     func cargarHistorial() {
         cargando = true
@@ -41,7 +67,6 @@ class ChatViewModel: ObservableObject {
                 self.mensajes = msgs.compactMap { m in
                     guard let role = m["role"] as? String,
                           var content = m["content"] as? String else { return nil }
-                    // Limpiar marcadores de sistema
                     if let range = content.range(of: "\\[SISTEMA:.*?\\]", options: .regularExpression) {
                         content.removeSubrange(range)
                     }
@@ -70,11 +95,13 @@ class ChatViewModel: ObservableObject {
         textoEscrito = ""
         mensajes.append(Mensaje(role: "user", content: texto))
 
+        let lat = locationManager?.lat ?? 0
+        let lon = locationManager?.lon ?? 0
         guard let encoded = texto.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let url = URL(string: "https://bidjuanmi.com/chat-stream?message=\(encoded)") else { return }
+              let url = URL(string: "https://bidjuanmi.com/chat-stream?message=\(encoded)&lat=\(lat)&lon=\(lon)") else { return }
 
         var respuestaCompleta = ""
-        let task = URLSession.shared.dataTask(with: url) { data, _, _ in
+        URLSession.shared.dataTask(with: url) { data, _, _ in
             if let data = data, let texto = String(data: data, encoding: .utf8) {
                 for linea in texto.components(separatedBy: "\n") {
                     if linea.hasPrefix("data: ") {
@@ -92,13 +119,13 @@ class ChatViewModel: ObservableObject {
                     }
                 }
             }
-        }
-        task.resume()
+        }.resume()
     }
 }
 
 struct ChatView: View {
     @StateObject private var vm = ChatViewModel()
+    @EnvironmentObject var locationManager: LocationManager
     @FocusState private var tecladoActivo: Bool
 
     var body: some View {
@@ -106,7 +133,6 @@ struct ChatView: View {
             Color(red: 0.01, green: 0.03, blue: 0.06).ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header
                 HStack {
                     Text("CHAT")
                         .font(.system(size: 13, design: .monospaced))
@@ -119,6 +145,7 @@ struct ChatView: View {
                         Image(systemName: "trash")
                             .foregroundColor(Color(red: 0, green: 0.71, blue: 0.85).opacity(0.6))
                     }
+                    .padding(.trailing, 8)
                     Button {
                         vm.cargarHistorial()
                     } label: {
@@ -130,11 +157,15 @@ struct ChatView: View {
                 .padding(.vertical, 12)
                 .background(Color(red: 0.01, green: 0.05, blue: 0.1))
 
-                // Mensajes
                 if vm.cargando {
                     Spacer()
-                    ProgressView()
-                        .tint(Color(red: 0, green: 0.71, blue: 0.85))
+                    ProgressView().tint(Color(red: 0, green: 0.71, blue: 0.85))
+                    Spacer()
+                } else if vm.mensajes.isEmpty {
+                    Spacer()
+                    Text("Sin conversaciones")
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundColor(Color(red: 0, green: 0.71, blue: 0.85).opacity(0.3))
                     Spacer()
                 } else {
                     ScrollViewReader { proxy in
@@ -174,7 +205,6 @@ struct ChatView: View {
                     }
                 }
 
-                // Input
                 HStack(spacing: 10) {
                     TextField("Escribe a Bid...", text: $vm.textoEscrito)
                         .font(.system(size: 14))
@@ -200,7 +230,70 @@ struct ChatView: View {
                 .background(Color(red: 0.01, green: 0.05, blue: 0.1))
             }
         }
-        .onAppear { vm.cargarHistorial() }
+        .onAppear {
+            vm.locationManager = locationManager
+            vm.cargarHistorial()
+        }
+    }
+}
+
+// MARK: - Pantalla BID
+
+struct BidStatusView: View {
+    @ObservedObject var viewModel: WearablesViewModel
+    @EnvironmentObject var locationManager: LocationManager
+
+    var body: some View {
+        ZStack {
+            Color(red: 0.01, green: 0.03, blue: 0.06).ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                Spacer()
+
+                // Logo BID
+                VStack(spacing: 16) {
+                    ZStack {
+                        Circle()
+                            .stroke(Color(red: 0, green: 0.71, blue: 0.85).opacity(0.2), lineWidth: 1)
+                            .frame(width: 120, height: 120)
+                        Circle()
+                            .stroke(Color(red: 0, green: 0.71, blue: 0.85).opacity(0.1), lineWidth: 1)
+                            .frame(width: 90, height: 90)
+                        Text("BID")
+                            .font(.system(size: 36, weight: .thin, design: .monospaced))
+                            .foregroundColor(Color(red: 0, green: 0.71, blue: 0.85))
+                            .tracking(8)
+                    }
+
+                    Text("ASISTENTE PERSONAL")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(Color(red: 0, green: 0.71, blue: 0.85).opacity(0.4))
+                        .tracking(4)
+                }
+
+                Spacer()
+
+                // Status
+                Text(viewModel.bidStatus)
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundColor(.yellow)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.black.opacity(0.5))
+                    .cornerRadius(6)
+                    .padding(.bottom, 40)
+            }
+        }
+        // Enviar ubicación al servidor cada 5 minutos
+        .onAppear {
+            Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { _ in
+                let lat = locationManager.lat
+                let lon = locationManager.lon
+                guard lat != 0, lon != 0 else { return }
+                guard let url = URL(string: "https://bidjuanmi.com/chat-stream?message=ubicacion_background&lat=\(lat)&lon=\(lon)") else { return }
+                URLSession.shared.dataTask(with: url).resume()
+            }
+        }
     }
 }
 
@@ -209,6 +302,7 @@ struct ChatView: View {
 struct MainAppView: View {
     let wearables: WearablesInterface
     @ObservedObject private var viewModel: WearablesViewModel
+    @StateObject private var locationManager = LocationManager()
 
     init(wearables: WearablesInterface, viewModel: WearablesViewModel) {
         self.wearables = wearables
@@ -219,26 +313,13 @@ struct MainAppView: View {
 
     var body: some View {
         TabView {
-            // Pestaña 1 — Gafas
-            ZStack(alignment: .top) {
-                if viewModel.registrationState == .registered {
-                    StreamSessionView(wearables: wearables, wearablesVM: viewModel)
-                        .onAppear { viewModel.arrancarEscucha() }
-                } else {
-                    HomeScreenView(viewModel: viewModel)
+            // Pestaña 1 — BID
+            BidStatusView(viewModel: viewModel)
+                .onAppear { viewModel.arrancarEscucha() }
+                .tabItem {
+                    Image(systemName: "waveform")
+                    Text("BID")
                 }
-                Text(viewModel.bidStatus)
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundColor(.yellow)
-                    .padding(6)
-                    .background(Color.black.opacity(0.7))
-                    .cornerRadius(6)
-                    .padding(.top, 50)
-            }
-            .tabItem {
-                Image(systemName: "waveform")
-                Text("BID")
-            }
 
             // Pestaña 2 — Chat
             ChatView()
@@ -256,5 +337,6 @@ struct MainAppView: View {
                 }
         }
         .accentColor(Color(red: 0, green: 0.71, blue: 0.85))
+        .environmentObject(locationManager)
     }
 }
