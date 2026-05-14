@@ -249,8 +249,13 @@ final class StreamSessionViewModel: ObservableObject {
         }
       }
     } catch { return }
-    if !textoCompleto.isEmpty {
-      await reproducirAudio(texto: textoCompleto)
+    if textoCompleto.trimmingCharacters(in: .whitespacesAndNewlines) == "[FOTO]" {
+        respuestaParaFoto = true
+    } else {
+        respuestaParaFoto = false
+        if !textoCompleto.isEmpty {
+            await reproducirAudio(texto: textoCompleto)
+        }
     }
 }
 
