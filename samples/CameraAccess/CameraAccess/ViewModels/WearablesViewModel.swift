@@ -387,8 +387,16 @@ class WearablesViewModel: ObservableObject {
         self.bidStatus = "Tú: \(texto)"
         BidEscuchaManager.instancia?.pausarConversacionTimer()
       }
-      let vm = StreamSessionViewModel(wearables: self.wearables)
-      await vm.enviarMensajeABid(mensaje: texto)
+    let vm = StreamSessionViewModel(wearables: self.wearables)
+    await vm.enviarMensajeABid(mensaje: texto)
+    // Si la respuesta fue [FOTO], activar captura
+    if vm.respuestaParaFoto {
+    await vm.handleStartStreaming()
+    try? await Task.sleep(nanoseconds: 3_000_000_000)
+    vm.capturePhoto()
+    try? await Task.sleep(nanoseconds: 2_000_000_000)
+    await vm.stopSession()
+}
 
       await withCheckedContinuation { continuation in
         var observador: NSObjectProtocol?
