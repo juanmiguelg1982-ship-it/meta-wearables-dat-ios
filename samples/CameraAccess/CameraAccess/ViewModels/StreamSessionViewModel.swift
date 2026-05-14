@@ -190,15 +190,9 @@ final class StreamSessionViewModel: ObservableObject {
     }
   }
 
-  func handleVideoFrame(_ frame: VideoFrame) async {
-    if let image = frame.makeUIImage() {
-      currentVideoFrame = image
-      if !hasReceivedFirstFrame {
-        hasReceivedFirstFrame = true
-        await enviarMensajeABid(mensaje: "Que ves en esta imagen de mis gafas?")
-      }
-    }
-  }
+  juanmi@bid:~$ sudo journalctl -u bid-core -n 10 --no-pager | grep -i "foto\|peticion"
+[sudo: authenticate] Password:
+may 14 23:07:17 bid python3[159845]:     iter([f"data: {json.dumps({'text': '[FOTO]'})}
 
   func handlePhotoData(_ data: PhotoData) async {
     isCapturingPhoto = false
