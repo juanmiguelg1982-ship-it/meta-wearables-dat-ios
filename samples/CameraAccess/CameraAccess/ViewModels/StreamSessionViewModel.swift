@@ -21,7 +21,7 @@ final class BidAudioPlayer: NSObject, @unchecked Sendable {
 
   func play(data: Data) {
     BidEscuchaManager.pausarEngine()
-        try? AVAudioSession.sharedInstance().setActive(true)
+    try? AVAudioSession.sharedInstance().setActive(true)
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
       if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
         appDelegate.silencioPlayer?.play()
@@ -64,6 +64,7 @@ final class StreamSessionViewModel: ObservableObject {
   @Published var hasActiveDevice: Bool = false
   @Published var isDeviceSessionReady: Bool = false
   @Published var respuestaParaFoto = false
+
   var isStreaming: Bool { streamingStatus != .stopped }
 
   private let sessionManager: DeviceSessionManager
@@ -186,34 +187,45 @@ final class StreamSessionViewModel: ObservableObject {
       streamingStatus = .waiting
     case .streaming:
       streamingStatus = .streaming
-      await enviarMensajeABid(mensaje: "Streaming iniciado desde las gafas Ray-Ban Meta")
     }
   }
 
-  juanmi@bid:~$ sudo journalctl -u bid-core -n 10 --no-pager | grep -i "foto\|peticion"
-[sudo: authenticate] Password:
-may 14 23:07:17 bid python3[159845]:     iter([f"data: {json.dumps({'text': '[FOTO]'})}
+  func handleVideoFrame(_ frame: VideoFrame) async {
+    if let image = frame.makeUIImage() {
+      currentVideoFrame = image
+      if respuestaParaFoto {
+        respuestaParaFoto = false
+        if let jpegData = image.jpegData(compressionQuality: 0.7) {
+          await stopSession()
+          await analizarImagen(data: jpegData)
+        }
+      }
+    }
+  }
 
   func handlePhotoData(_ data: PhotoData) async {
     isCapturingPhoto = false
     if let image = UIImage(data: data.data) {
-        capturedPhoto = image
-        showPhotoPreview = true
-        // Mandar imagen al servidor para análisis
-        guard let url = URL(string: "https://bidjuanmi.com/analizar-imagen") else { return }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
-        request.httpBody = data.data
-        do {
-            let (responseData, _) = try await URLSession.shared.data(for: request)
-            if let json = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
-               let descripcion = json["descripcion"] as? String {
-                await reproducirAudio(texto: descripcion)
-            }
-        } catch { return }
+      capturedPhoto = image
+      showPhotoPreview = true
+      await analizarImagen(data: data.data)
     }
-}
+  }
+
+  func analizarImagen(data: Data) async {
+    guard let url = URL(string: "https://bidjuanmi.com/analizar-imagen") else { return }
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+    request.httpBody = data
+    do {
+      let (responseData, _) = try await URLSession.shared.data(for: request)
+      if let json = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
+         let descripcion = json["descripcion"] as? String {
+        await reproducirAudio(texto: descripcion)
+      }
+    } catch { return }
+  }
 
   func handleError(_ error: StreamSessionError) async {
     let message = formatError(error)
@@ -224,8 +236,8 @@ may 14 23:07:17 bid python3[159845]:     iter([f"data: {json.dumps({'text': '[FO
     guard var components = URLComponents(string: "https://bidjuanmi.com/chat-stream") else { return }
     var queryItems = [URLQueryItem(name: "message", value: mensaje)]
     if lat != 0 && lon != 0 {
-        queryItems.append(URLQueryItem(name: "lat", value: String(lat)))
-        queryItems.append(URLQueryItem(name: "lon", value: String(lon)))
+      queryItems.append(URLQueryItem(name: "lat", value: String(lat)))
+      queryItems.append(URLQueryItem(name: "lon", value: String(lon)))
     }
     components.queryItems = queryItems
     guard let url = components.url else { return }
@@ -244,14 +256,14 @@ may 14 23:07:17 bid python3[159845]:     iter([f"data: {json.dumps({'text': '[FO
       }
     } catch { return }
     if textoCompleto.trimmingCharacters(in: .whitespacesAndNewlines) == "[FOTO]" {
-        respuestaParaFoto = true
+      respuestaParaFoto = true
     } else {
-        respuestaParaFoto = false
-        if !textoCompleto.isEmpty {
-            await reproducirAudio(texto: textoCompleto)
-        }
+      respuestaParaFoto = false
+      if !textoCompleto.isEmpty {
+        await reproducirAudio(texto: textoCompleto)
+      }
     }
-}
+  }
 
   func reproducirAudio(texto: String) async {
     guard var components = URLComponents(string: "https://bidjuanmi.com/tts") else { return }
