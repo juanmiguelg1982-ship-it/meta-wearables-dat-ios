@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Bid</string>
+	<string>BID</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -49,15 +49,20 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>BID necesita tu ubicación para avisarte cuando pases cerca de sitios importantes.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>BID necesita tu ubicación para darte información relevante.</string>
 	<key>UIBackgroundModes</key>
-    <array>
-    <string>processing</string>
-    <string>bluetooth-central</string>
-    <string>bluetooth-peripheral</string>
-    <string>external-accessory</string>
-    <string>audio</string>
-    <string>voip</string>
-    </array>
+	<array>
+		<string>processing</string>
+		<string>bluetooth-central</string>
+		<string>bluetooth-peripheral</string>
+		<string>external-accessory</string>
+		<string>audio</string>
+		<string>voip</string>
+		<string>location</string>
+	</array>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Needed to connect to Meta AI Glasses</string>
 	<key>NSLocalNetworkUsageDescription</key>
