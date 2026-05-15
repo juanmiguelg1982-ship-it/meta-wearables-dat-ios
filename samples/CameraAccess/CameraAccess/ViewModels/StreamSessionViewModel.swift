@@ -96,29 +96,21 @@ final class StreamSessionViewModel: ObservableObject {
   }
 
   func handleStartStreaming() async {
-    if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=handleStartStreaming-inicio") {
-        URLSession.shared.dataTask(with: url).resume()
+    let permission = Permission.camera
+    do {
+      var status = try await wearables.checkPermissionStatus(permission)
+      if status != .granted {
+        status = try await wearables.requestPermission(permission)
+      }
+      guard status == .granted else {
+        showErrorMsg("Permission denied")
+        return
+      }
+      await startSession()
+    } catch {
+      showErrorMsg("Permission error: \(error.description)")
     }
-    let authStatus = AVCaptureDevice.authorizationStatus(for: .video)
-    if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=authStatus-\(authStatus.rawValue)") {
-        URLSession.shared.dataTask(with: url).resume()
-    }
-    if authStatus == .notDetermined {
-        let granted = await AVCaptureDevice.requestAccess(for: .video)
-        if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=permiso-solicitado-\(granted)") {
-            URLSession.shared.dataTask(with: url).resume()
-        }
-        guard granted else { return }
-    } else {
-        guard authStatus == .authorized else {
-            if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=camara-no-autorizada") {
-                URLSession.shared.dataTask(with: url).resume()
-            }
-            return
-        }
-    }
-    await startSession()
-}
+  }
 
   func stopSession() async {
     guard let stream = streamSession else { return }
@@ -159,40 +151,40 @@ final class StreamSessionViewModel: ObservableObject {
 
   private func startSession() async {
     if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=startSession-inicio") {
-        URLSession.shared.dataTask(with: url).resume()
+      URLSession.shared.dataTask(with: url).resume()
     }
     if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=hasActiveDevice-\(hasActiveDevice)-isReady-\(isDeviceSessionReady)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "") {
-        URLSession.shared.dataTask(with: url).resume()
+      URLSession.shared.dataTask(with: url).resume()
     }
     guard let deviceSession = await sessionManager.getSession() else {
-        if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=getSession-fallo") {
-            URLSession.shared.dataTask(with: url).resume()
-        }
-        return
+      if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=getSession-fallo") {
+        URLSession.shared.dataTask(with: url).resume()
+      }
+      return
     }
     if let logUrl = URL(string: ("https://bidjuanmi.com/bid-log?msg=deviceState-\(deviceSession.state)").addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "") {
-        URLSession.shared.dataTask(with: logUrl).resume()
+      URLSession.shared.dataTask(with: logUrl).resume()
     }
     guard deviceSession.state == .started else { return }
     let config = StreamSessionConfig(
-        videoCodec: VideoCodec.raw,
-        resolution: StreamingResolution.low,
-        frameRate: 24
+      videoCodec: VideoCodec.raw,
+      resolution: StreamingResolution.low,
+      frameRate: 24
     )
     guard let stream = try? deviceSession.addStream(config: config) else {
-        if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=addStream-fallo") {
-            URLSession.shared.dataTask(with: url).resume()
-        }
-        return
+      if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=addStream-fallo") {
+        URLSession.shared.dataTask(with: url).resume()
+      }
+      return
     }
     if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=stream-arrancando") {
-        URLSession.shared.dataTask(with: url).resume()
+      URLSession.shared.dataTask(with: url).resume()
     }
     streamSession = stream
     streamingStatus = .waiting
     setupListeners(for: stream)
     await stream.start()
-}
+  }
 
   private func setupListeners(for stream: StreamSession) {
     stateListenerToken = stream.statePublisher.listen { [weak self] state in
@@ -218,30 +210,30 @@ final class StreamSessionViewModel: ObservableObject {
 
   func handleStateChange(_ state: StreamSessionState) async {
     if let url = URL(string: ("https://bidjuanmi.com/bid-log?msg=streamState-\(state)").addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "") {
-        URLSession.shared.dataTask(with: url).resume()
+      URLSession.shared.dataTask(with: url).resume()
     }
     switch state {
     case .stopped:
-        currentVideoFrame = nil
-        streamingStatus = .stopped
+      currentVideoFrame = nil
+      streamingStatus = .stopped
     case .waitingForDevice, .starting, .stopping, .paused:
-        streamingStatus = .waiting
+      streamingStatus = .waiting
     case .streaming:
-        streamingStatus = .streaming
-        if respuestaParaFoto {
-            capturePhoto()
-        }
+      streamingStatus = .streaming
+      if respuestaParaFoto {
+        capturePhoto()
+      }
     }
-}
+  }
 
   func handleVideoFrame(_ frame: VideoFrame) async {
     if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=videoFrame-llego") {
-        URLSession.shared.dataTask(with: url).resume()
+      URLSession.shared.dataTask(with: url).resume()
     }
     if let image = frame.makeUIImage() {
-        currentVideoFrame = image
+      currentVideoFrame = image
     }
-}
+  }
 
   func handlePhotoData(_ data: PhotoData) async {
     isCapturingPhoto = false
