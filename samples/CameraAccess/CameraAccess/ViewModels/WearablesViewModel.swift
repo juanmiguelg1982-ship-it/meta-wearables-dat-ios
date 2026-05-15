@@ -114,7 +114,13 @@ private func arrancarVigilante() {
     }
 }
 
- private func iniciarEscuchaBID() {
+private func iniciarEscuchaBID() {
+    // Log al servidor
+    let logMsg = "iniciarEscuchaBID engine:\(audioEngine.isRunning) conv:\(enConversacion) grab:\(grabandoRespuesta)"
+    if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=\(logMsg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? \"\")") {
+        URLSession.shared.dataTask(with: url).resume()
+    }
+
     enConversacion = false
     faseEscucha = false
     conversacionTimer?.invalidate()
