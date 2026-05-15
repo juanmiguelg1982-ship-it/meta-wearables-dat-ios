@@ -392,6 +392,7 @@ struct FotoAnalisisView: View {
     @StateObject private var vm = FotoAnalisisViewModel()
     @EnvironmentObject var locationManager: LocationManager
     @FocusState private var tecladoActivo: Bool
+    @State private var mostrarGaleria = false
     let cyan = Color(red: 0, green: 0.71, blue: 0.85)
     let fondo = Color(red: 0.01, green: 0.03, blue: 0.06)
 
@@ -400,12 +401,34 @@ struct FotoAnalisisView: View {
             fondo.ignoresSafeArea()
 
             VStack(spacing: 0) {
+                // Header
                 HStack {
                     Text("FOTO")
                         .font(.system(size: 13, design: .monospaced))
                         .foregroundColor(cyan)
                         .tracking(3)
                     Spacer()
+                    // Botón galería
+                    Button {
+                        tecladoActivo = false
+                        mostrarGaleria = true
+                    } label: {
+                        Image(systemName: "photo.on.rectangle")
+                            .foregroundColor(cyan.opacity(0.7))
+                            .font(.system(size: 18))
+                    }
+                    .padding(.trailing, 12)
+                    // Botón reset
+                    Button {
+                        tecladoActivo = false
+                        vm.fotoSeleccionada = nil
+                        vm.pregunta = ""
+                        vm.respuesta = ""
+                    } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                            .foregroundColor(cyan.opacity(0.7))
+                            .font(.system(size: 18))
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
@@ -443,20 +466,43 @@ struct FotoAnalisisView: View {
                             vm.mostrarCamara = true
                         }
 
-                        Button {
-                            tecladoActivo = false
-                            vm.mostrarCamara = true
-                        } label: {
-                            HStack(spacing: 10) {
-                                Image(systemName: vm.fotoSeleccionada == nil ? "camera.fill" : "camera.badge.ellipsis")
-                                Text(vm.fotoSeleccionada == nil ? "Hacer foto" : "Nueva foto")
-                                    .font(.system(size: 14, design: .monospaced))
+                        // Botones cámara y galería
+                        HStack(spacing: 12) {
+                            Button {
+                                tecladoActivo = false
+                                vm.mostrarCamara = true
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: vm.fotoSeleccionada == nil ? "camera.fill" : "camera.badge.ellipsis")
+                                    Text(vm.fotoSeleccionada == nil ? "Hacer foto" : "Nueva foto")
+                                        .font(.system(size: 14, design: .monospaced))
+                                }
+                                .foregroundColor(fondo)
+                                .padding(.vertical, 12)
+                                .padding(.horizontal, 20)
+                                .background(cyan)
+                                .cornerRadius(10)
                             }
-                            .foregroundColor(fondo)
-                            .padding(.vertical, 12)
-                            .padding(.horizontal, 24)
-                            .background(cyan)
-                            .cornerRadius(10)
+
+                            Button {
+                                tecladoActivo = false
+                                mostrarGaleria = true
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "photo.on.rectangle")
+                                    Text("Galería")
+                                        .font(.system(size: 14, design: .monospaced))
+                                }
+                                .foregroundColor(cyan)
+                                .padding(.vertical, 12)
+                                .padding(.horizontal, 20)
+                                .background(cyan.opacity(0.15))
+                                .cornerRadius(10)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .stroke(cyan.opacity(0.4), lineWidth: 1)
+                                )
+                            }
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
@@ -531,8 +577,42 @@ struct FotoAnalisisView: View {
         .sheet(isPresented: $vm.mostrarCamara) {
             CamaraView(imagen: $vm.fotoSeleccionada)
         }
+        .sheet(isPresented: $mostrarGaleria) {
+            GaleriaView(imagen: $vm.fotoSeleccionada)
+        }
         .onAppear {
             vm.locationManager = locationManager
+        }
+    }
+}
+
+struct GaleriaView: UIViewControllerRepresentable {
+    @Binding var imagen: UIImage?
+    @Environment(\.dismiss) var dismiss
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .photoLibrary
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: GaleriaView
+        init(_ parent: GaleriaView) { self.parent = parent }
+
+        func imagePickerController(_ picker: UIImagePickerController,
+                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            parent.imagen = info[.originalImage] as? UIImage
+            parent.dismiss()
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.dismiss()
         }
     }
 }
