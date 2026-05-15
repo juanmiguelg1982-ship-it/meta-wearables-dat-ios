@@ -180,51 +180,49 @@ private func arrancarVigilante() {
     }
   }
 
-  private func iniciarEscuchaPregunta() {
-    grabandoRespuesta = true
-    ultimoTexto = ""
-    textoAnterior = ""
-    onEstado("🎤 ...")
+  private func iniciarEscuchaBID() {
+    // Log al servidor
+    let logMsg = "iniciarEscuchaBID engine:\(audioEngine.isRunning) conv:\(enConversacion) grab:\(grabandoRespuesta)"
+    if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=\(logMsg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? \"\")") {
+        URLSession.shared.dataTask(with: url).resume()
+    }
+
+    enConversacion = false
+    faseEscucha = false
+    conversacionTimer?.invalidate()
     pararEngine()
+
+    try? AVAudioSession.sharedInstance().setCategory(
+      .playAndRecord,
+      mode: .voiceChat,
+      options: [.allowBluetoothHFP, .mixWithOthers]
+    )
+    try? AVAudioSession.sharedInstance().setActive(true)
 
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
     guard let req = recognitionRequest else { return }
     req.shouldReportPartialResults = true
 
+    ultimoResultado = Date()
+
     recognitionTask = speechRecognizer?.recognitionTask(with: req) { [weak self] result, error in
-      guard let self = self else { return }
+      guard let self = self, !self.faseEscucha else { return }
       if let result = result {
-        let texto = result.bestTranscription.formattedString
-        let textoLower = texto.lowercased()
-
-        if self.palabrasTerminar.contains(where: { textoLower == $0 || textoLower.hasSuffix(" \($0)") }) {
-          DispatchQueue.main.async { self.terminarConversacion() }
-          return
-        }
-
-        self.ultimoTexto = texto
-        DispatchQueue.main.async { self.onEstado("🎤 \(texto)") }
-
-        if texto != self.textoAnterior {
-          self.textoAnterior = texto
-          self.envioTimer?.invalidate()
-          self.envioTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { [weak self] _ in
-            self?.pararYEnviar()
-          }
-        }
-
-        if result.isFinal {
-          DispatchQueue.main.async { self.pararYEnviar() }
+        self.ultimoResultado = Date()
+        let texto = result.bestTranscription.formattedString.lowercased()
+        if self.palabrasActivacion.contains(where: { texto.contains($0) }) {
+          DispatchQueue.main.async { self.wakeWordDetectado() }
         }
       }
-      if error != nil && self.grabandoRespuesta {
-        DispatchQueue.main.async { self.pararYEnviar() }
+      if error != nil {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciarEscuchaBID() }
       }
     }
 
     arrancarEngine()
-  }
-
+    onEstado("Escuchando... di OYE")
+    arrancarVigilante()
+}
   func pausarConversacionTimer() {
     conversacionTimer?.invalidate()
   }
