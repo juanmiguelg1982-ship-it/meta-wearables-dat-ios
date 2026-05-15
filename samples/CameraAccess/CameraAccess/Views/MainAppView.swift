@@ -763,7 +763,161 @@ struct GaleriaView: UIViewControllerRepresentable {
         }
     }
 }
+// MARK: - Pantalla View
 
+struct PantallaItem: Identifiable {
+    let id = UUID()
+    let titulo: String
+    let contenido: String
+    let ts: Double
+}
+
+class PantallaViewModel: ObservableObject {
+    @Published var items: [PantallaItem] = []
+    @Published var itemSeleccionado: PantallaItem? = nil
+    
+    func cargar() {
+        guard let url = URL(string: "https://bidjuanmi.com/pantalla-lista") else { return }
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            guard let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let items = json["items"] as? [[String: Any]] else { return }
+            DispatchQueue.main.async {
+                self.items = items.compactMap { i in
+                    guard let titulo = i["titulo"] as? String,
+                          let contenido = i["contenido"] as? String,
+                          let ts = i["ts"] as? Double else { return nil }
+                    return PantallaItem(titulo: titulo, contenido: contenido, ts: ts)
+                }.reversed()
+            }
+        }.resume()
+    }
+    
+    func borrarTodo() {
+        guard let url = URL(string: "https://bidjuanmi.com/pantalla-lista") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        URLSession.shared.dataTask(with: request) { _, _, _ in
+            DispatchQueue.main.async { self.items = [] }
+        }.resume()
+    }
+}
+
+struct PantallaView: View {
+    @StateObject private var vm = PantallaViewModel()
+    let cyan = Color(red: 0, green: 0.71, blue: 0.85)
+    let fondo = Color(red: 0.01, green: 0.03, blue: 0.06)
+    
+    var body: some View {
+        ZStack {
+            fondo.ignoresSafeArea()
+            VStack(spacing: 0) {
+                HStack {
+                    Text("PANTALLA")
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundColor(cyan)
+                        .tracking(3)
+                    Spacer()
+                    Button {
+                        vm.cargar()
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .foregroundColor(cyan.opacity(0.7))
+                            .font(.system(size: 18))
+                    }
+                    .padding(.trailing, 12)
+                    Button {
+                        vm.borrarTodo()
+                    } label: {
+                        Image(systemName: "trash")
+                            .foregroundColor(cyan.opacity(0.7))
+                            .font(.system(size: 18))
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color(red: 0.01, green: 0.05, blue: 0.1))
+                
+                if let item = vm.itemSeleccionado {
+                    // Vista detalle
+                    VStack(spacing: 0) {
+                        HStack {
+                            Button {
+                                vm.itemSeleccionado = nil
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "chevron.left")
+                                    Text("VOLVER")
+                                        .font(.system(size: 11, design: .monospaced))
+                                }
+                                .foregroundColor(cyan)
+                            }
+                            Spacer()
+                            Text(item.titulo)
+                                .font(.system(size: 12, design: .monospaced))
+                                .foregroundColor(cyan.opacity(0.6))
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(Color(red: 0.01, green: 0.05, blue: 0.1))
+                        
+                        ScrollView {
+                            Text(item.contenido)
+                                .font(.system(size: 15))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(16)
+                                .lineSpacing(6)
+                        }
+                    }
+                } else {
+                    // Lista
+                    if vm.items.isEmpty {
+                        Spacer()
+                        VStack(spacing: 12) {
+                            Image(systemName: "rectangle.on.rectangle")
+                                .font(.system(size: 40))
+                                .foregroundColor(cyan.opacity(0.3))
+                            Text("Sin contenido")
+                                .font(.system(size: 13, design: .monospaced))
+                                .foregroundColor(cyan.opacity(0.3))
+                        }
+                        Spacer()
+                    } else {
+                        ScrollView {
+                            VStack(spacing: 10) {
+                                ForEach(vm.items) { item in
+                                    Button {
+                                        vm.itemSeleccionado = item
+                                    } label: {
+                                        VStack(alignment: .leading, spacing: 6) {
+                                            Text(item.titulo)
+                                                .font(.system(size: 12, design: .monospaced))
+                                                .foregroundColor(cyan)
+                                                .tracking(1)
+                                            Text(item.contenido)
+                                                .font(.system(size: 13))
+                                                .foregroundColor(.white.opacity(0.7))
+                                                .lineLimit(3)
+                                                .multilineTextAlignment(.leading)
+                                        }
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(14)
+                                        .background(Color(red: 0.02, green: 0.08, blue: 0.15))
+                                        .cornerRadius(10)
+                                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(cyan.opacity(0.2), lineWidth: 1))
+                                    }
+                                }
+                            }
+                            .padding(16)
+                        }
+                    }
+                }
+            }
+        }
+        .onAppear { vm.cargar() }
+    }
+}
 // MARK: - Main App View
 
 struct MainAppView: View {
@@ -798,7 +952,11 @@ struct MainAppView: View {
                 Image(systemName: "camera.fill")
                 Text("FOTO")
             }
-
+PantallaView()
+    .tabItem {
+        Image(systemName: "rectangle.on.rectangle")
+        Text("PANTALLA")
+    }
         GafasView(viewModel: viewModel, streamVM: viewModel.streamVM)
     .tabItem {
         Image(systemName: "eyeglasses")
