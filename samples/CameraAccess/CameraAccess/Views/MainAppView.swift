@@ -799,11 +799,11 @@ struct MainAppView: View {
                 Text("FOTO")
             }
 
-        GafasView(viewModel: viewModel, streamVM: viewModel.streamVM ?? StreamSessionViewModel(wearables: wearables))
-            .tabItem {
-                Image(systemName: "eyeglasses")
-                Text("GAFAS")
-            }
+        GafasView(viewModel: viewModel, streamVM: viewModel.streamVM)
+    .tabItem {
+        Image(systemName: "eyeglasses")
+        Text("GAFAS")
+    }
 
         BidWebView(url: URL(string: "https://bidjuanmi.com?app_token=bid-app-token-juanmi")!)
             .ignoresSafeArea()
