@@ -95,20 +95,20 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     vigilanteTask?.cancel()
     ultimoResultado = Date()
     vigilanteTask = Task { [weak self] in
-      while !Task.isCancelled {
-        try? await Task.sleep(nanoseconds: 5_000_000_000)
-        guard let self = self, !self.enConversacion, !self.grabandoRespuesta else { continue }
-        let segundosSinResultado = Date().timeIntervalSince(self.ultimoResultado)
-        if segundosSinResultado > 25 {
-          await MainActor.run {
-            self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
-            self.speechRecognizer?.delegate = self
-            self.iniciarEscuchaBID()
-          }
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard let self = self, !self.enConversacion, !self.grabandoRespuesta else { continue }
+            let segundosSinResultado = Date().timeIntervalSince(self.ultimoResultado)
+            if segundosSinResultado > 25 {
+                await MainActor.run {
+                    self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
+                    self.speechRecognizer?.delegate = self
+                    self.iniciarEscuchaBID()
+                }
+            }
         }
-      }
     }
-  }
+}
 
  private func iniciarEscuchaBID() {
     let msg = "engine:\(audioEngine.isRunning) conv:\(enConversacion) grab:\(grabandoRespuesta)"
@@ -291,15 +291,13 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
             try audioEngine.start()
         } catch {
             audioEngine.inputNode.removeTap(onBus: 0)
-            audioEngine.stop()
-            audioEngine = AVAudioEngine()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                self.iniciarEscuchaBID()
-            }
+            // No reintentar aquí — el vigilante lo hará
         }
     }
+}
  }
- }
+ 
+
 @MainActor
 class WearablesViewModel: ObservableObject {
   @Published var devices: [DeviceIdentifier]
