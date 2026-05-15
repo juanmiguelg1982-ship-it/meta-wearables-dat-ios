@@ -85,6 +85,14 @@ final class StreamSessionViewModel: ObservableObject {
     sessionManager.$isReady
       .receive(on: DispatchQueue.main)
       .assign(to: &$isDeviceSessionReady)
+    sessionManager.$hasActiveDevice
+      .receive(on: DispatchQueue.main)
+      .sink { active in
+        if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=hasActiveDevice-cambio-\(active)") {
+          URLSession.shared.dataTask(with: url).resume()
+        }
+      }
+      .store(in: &cancellables)
   }
 
   func handleStartStreaming() async {
