@@ -297,7 +297,241 @@ struct BidStatusView: View {
         }
     }
 }
+// MARK: - Foto Análisis
 
+class FotoAnalisisViewModel: ObservableObject {
+    @Published var fotoSeleccionada: UIImage? = nil
+    @Published var pregunta: String = ""
+    @Published var respuesta: String = ""
+    @Published var cargando: Bool = false
+    @Published var mostrarCamara: Bool = false
+
+    func analizarFoto() async {
+        guard let imagen = fotoSeleccionada,
+              let jpegData = imagen.jpegData(compressionQuality: 0.7) else { return }
+        
+        let base64 = jpegData.base64EncodedString()
+        let preguntaFinal = pregunta.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "¿Qué ves en esta imagen?"
+            : pregunta
+
+        await MainActor.run { cargando = true; respuesta = "" }
+
+        guard let url = URL(string: "https://bidjuanmi.com/analizar-imagen") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = ["imagen": base64, "pregunta": preguntaFinal]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        do {
+            let (data, _) = try await URLSession.shared.data(for: request)
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let desc = json["descripcion"] as? String {
+                await MainActor.run {
+                    self.respuesta = desc
+                    self.cargando = false
+                }
+                await reproducirAudio(texto: desc)
+            }
+        } catch {
+            await MainActor.run { cargando = false }
+        }
+    }
+
+    func reproducirAudio(texto: String) async {
+        guard var components = URLComponents(string: "https://bidjuanmi.com/tts") else { return }
+        components.queryItems = [URLQueryItem(name: "text", value: texto)]
+        guard let url = components.url else { return }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            BidAudioPlayer.shared.play(data: data)
+        } catch {}
+    }
+}
+
+struct CamaraView: UIViewControllerRepresentable {
+    @Binding var imagen: UIImage?
+    @Environment(\.dismiss) var dismiss
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: CamaraView
+        init(_ parent: CamaraView) { self.parent = parent }
+
+        func imagePickerController(_ picker: UIImagePickerController,
+                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            parent.imagen = info[.originalImage] as? UIImage
+            parent.dismiss()
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.dismiss()
+        }
+    }
+}
+
+struct FotoAnalisisView: View {
+    @StateObject private var vm = FotoAnalisisViewModel()
+    @FocusState private var tecladoActivo: Bool
+    let cyan = Color(red: 0, green: 0.71, blue: 0.85)
+    let fondo = Color(red: 0.01, green: 0.03, blue: 0.06)
+
+    var body: some View {
+        ZStack {
+            fondo.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Text("FOTO")
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundColor(cyan)
+                        .tracking(3)
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color(red: 0.01, green: 0.05, blue: 0.1))
+
+                ScrollView {
+                    VStack(spacing: 20) {
+
+                        // Foto
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(cyan.opacity(0.3), lineWidth: 1)
+                                .frame(height: 260)
+                                .background(Color(red: 0.02, green: 0.06, blue: 0.12).cornerRadius(12))
+
+                            if let img = vm.fotoSeleccionada {
+                                Image(uiImage: img)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(height: 260)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                            } else {
+                                VStack(spacing: 12) {
+                                    Image(systemName: "camera")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(cyan.opacity(0.4))
+                                    Text("Toca para hacer una foto")
+                                        .font(.system(size: 12, design: .monospaced))
+                                        .foregroundColor(cyan.opacity(0.4))
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .onTapGesture {
+                            tecladoActivo = false
+                            vm.mostrarCamara = true
+                        }
+
+                        // Botón cámara
+                        Button {
+                            tecladoActivo = false
+                            vm.mostrarCamara = true
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: vm.fotoSeleccionada == nil ? "camera.fill" : "camera.badge.ellipsis")
+                                Text(vm.fotoSeleccionada == nil ? "Hacer foto" : "Nueva foto")
+                                    .font(.system(size: 14, design: .monospaced))
+                            }
+                            .foregroundColor(fondo)
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 24)
+                            .background(cyan)
+                            .cornerRadius(10)
+                        }
+
+                        // Campo pregunta
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("¿QUÉ QUIERES SABER?")
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundColor(cyan.opacity(0.5))
+                                .tracking(2)
+
+                            TextField("Ej: ¿Qué marca es esto? ¿Qué pone aquí?", text: $vm.pregunta, axis: .vertical)
+                                .font(.system(size: 14))
+                                .foregroundColor(.white)
+                                .padding(12)
+                                .background(Color(red: 0.05, green: 0.1, blue: 0.18))
+                                .cornerRadius(10)
+                                .focused($tecladoActivo)
+                                .lineLimit(3)
+                        }
+                        .padding(.horizontal, 16)
+
+                        // Botón analizar
+                        Button {
+                            tecladoActivo = false
+                            Task { await vm.analizarFoto() }
+                        } label: {
+                            HStack(spacing: 10) {
+                                if vm.cargando {
+                                    ProgressView().tint(fondo)
+                                } else {
+                                    Image(systemName: "eye.fill")
+                                }
+                                Text(vm.cargando ? "Analizando..." : "Analizar")
+                                    .font(.system(size: 14, design: .monospaced))
+                            }
+                            .foregroundColor(fondo)
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 32)
+                            .background(vm.fotoSeleccionada == nil ? cyan.opacity(0.3) : cyan)
+                            .cornerRadius(10)
+                        }
+                        .disabled(vm.fotoSeleccionada == nil || vm.cargando)
+
+                        // Respuesta
+                        if !vm.respuesta.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text("BID")
+                                        .font(.system(size: 10, design: .monospaced))
+                                        .foregroundColor(cyan)
+                                        .tracking(3)
+                                    Spacer()
+                                }
+
+                                Text(vm.respuesta)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.white)
+                                    .padding(12)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(Color(red: 0.02, green: 0.08, blue: 0.15))
+                                    .cornerRadius(10)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(cyan.opacity(0.2), lineWidth: 1)
+                                    )
+                            }
+                            .padding(.horizontal, 16)
+                        }
+
+                        Spacer(minLength: 40)
+                    }
+                    .padding(.top, 20)
+                }
+            }
+        }
+        .sheet(isPresented: $vm.mostrarCamara) {
+            CamaraView(imagen: $vm.fotoSeleccionada)
+        }
+    }
+}
 // MARK: - Main App View
 
 struct MainAppView: View {
