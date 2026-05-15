@@ -94,31 +94,29 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
   }
 
-private func arrancarVigilante() {
+  private func arrancarVigilante() {
     vigilanteTask?.cancel()
     ultimoResultado = Date()
     vigilanteTask = Task { [weak self] in
-        while !Task.isCancelled {
-            try? await Task.sleep(nanoseconds: 5_000_000_000)
-            guard let self = self, !self.enConversacion, !self.grabandoRespuesta else { continue }
-            let segundosSinResultado = Date().timeIntervalSince(self.ultimoResultado)
-            if segundosSinResultado > 25 {
-                await MainActor.run {
-                    // Recrear speechRecognizer entero
-                    self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
-                    self.speechRecognizer?.delegate = self
-                    self.iniciarEscuchaBID()
-                }
-            }
+      while !Task.isCancelled {
+        try? await Task.sleep(nanoseconds: 5_000_000_000)
+        guard let self = self, !self.enConversacion, !self.grabandoRespuesta else { continue }
+        let segundosSinResultado = Date().timeIntervalSince(self.ultimoResultado)
+        if segundosSinResultado > 25 {
+          await MainActor.run {
+            self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
+            self.speechRecognizer?.delegate = self
+            self.iniciarEscuchaBID()
+          }
         }
+      }
     }
-}
+  }
 
-private func iniciarEscuchaBID() {
-    // Log al servidor
+  private func iniciarEscuchaBID() {
     let logMsg = "iniciarEscuchaBID engine:\(audioEngine.isRunning) conv:\(enConversacion) grab:\(grabandoRespuesta)"
     if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=\(logMsg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? \"\")") {
-        URLSession.shared.dataTask(with: url).resume()
+      URLSession.shared.dataTask(with: url).resume()
     }
 
     enConversacion = false
@@ -186,49 +184,51 @@ private func iniciarEscuchaBID() {
     }
   }
 
-  private func iniciarEscuchaBID() {
-    // Log al servidor
-    let logMsg = "iniciarEscuchaBID engine:\(audioEngine.isRunning) conv:\(enConversacion) grab:\(grabandoRespuesta)"
-    if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=\(logMsg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? \"\")") {
-        URLSession.shared.dataTask(with: url).resume()
-    }
-
-    enConversacion = false
-    faseEscucha = false
-    conversacionTimer?.invalidate()
+  private func iniciarEscuchaPregunta() {
+    grabandoRespuesta = true
+    ultimoTexto = ""
+    textoAnterior = ""
+    onEstado("🎤 ...")
     pararEngine()
-
-    try? AVAudioSession.sharedInstance().setCategory(
-      .playAndRecord,
-      mode: .voiceChat,
-      options: [.allowBluetoothHFP, .mixWithOthers]
-    )
-    try? AVAudioSession.sharedInstance().setActive(true)
 
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
     guard let req = recognitionRequest else { return }
     req.shouldReportPartialResults = true
 
-    ultimoResultado = Date()
-
     recognitionTask = speechRecognizer?.recognitionTask(with: req) { [weak self] result, error in
-      guard let self = self, !self.faseEscucha else { return }
+      guard let self = self else { return }
       if let result = result {
-        self.ultimoResultado = Date()
-        let texto = result.bestTranscription.formattedString.lowercased()
-        if self.palabrasActivacion.contains(where: { texto.contains($0) }) {
-          DispatchQueue.main.async { self.wakeWordDetectado() }
+        let texto = result.bestTranscription.formattedString
+        let textoLower = texto.lowercased()
+
+        if self.palabrasTerminar.contains(where: { textoLower == $0 || textoLower.hasSuffix(" \($0)") }) {
+          DispatchQueue.main.async { self.terminarConversacion() }
+          return
+        }
+
+        self.ultimoTexto = texto
+        DispatchQueue.main.async { self.onEstado("🎤 \(texto)") }
+
+        if texto != self.textoAnterior {
+          self.textoAnterior = texto
+          self.envioTimer?.invalidate()
+          self.envioTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { [weak self] _ in
+            self?.pararYEnviar()
+          }
+        }
+
+        if result.isFinal {
+          DispatchQueue.main.async { self.pararYEnviar() }
         }
       }
-      if error != nil {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciarEscuchaBID() }
+      if error != nil && self.grabandoRespuesta {
+        DispatchQueue.main.async { self.pararYEnviar() }
       }
     }
 
     arrancarEngine()
-    onEstado("Escuchando... di OYE")
-    arrancarVigilante()
-}
+  }
+
   func pausarConversacionTimer() {
     conversacionTimer?.invalidate()
   }
