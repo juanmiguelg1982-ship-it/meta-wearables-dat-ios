@@ -29,7 +29,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   static func reanudarEngine() { instancia?.reanudar() }
 
   private let palabrasActivacion = ["oye"]
-  private let palabrasTerminar = ["ok", "listo", "hecho"]
+  private let palabrasTerminar = ["ok"]
 
   init(onEstado: @escaping (String) -> Void, onPregunta: @escaping (String) async -> Void) {
     self.onEstado = onEstado
