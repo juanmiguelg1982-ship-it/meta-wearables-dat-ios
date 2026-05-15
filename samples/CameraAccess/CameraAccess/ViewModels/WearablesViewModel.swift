@@ -151,6 +151,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         self.iniciarEscuchaBID()
     }
 }
+   }                                                                 
 
     arrancarEngine()
     onEstado("Escuchando... di OYE")
