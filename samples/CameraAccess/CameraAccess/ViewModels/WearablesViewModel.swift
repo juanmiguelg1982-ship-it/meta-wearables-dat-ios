@@ -271,12 +271,13 @@ class WearablesViewModel: ObservableObject {
   private let wearables: WearablesInterface
   private var compatibilityListenerTokens: [DeviceIdentifier: AnyListenerToken] = [:]
   private var bidEscucha: BidEscuchaManager?
-  var streamVM: StreamSessionViewModel?
+  var streamVM: StreamSessionViewModel
 
   init(wearables: WearablesInterface) {
     self.wearables = wearables
     self.devices = wearables.devices
     self.registrationState = wearables.registrationState
+    self.streamVM = StreamSessionViewModel(wearables: wearables)
     setupDeviceStreamTask = Task { await setupDeviceStream() }
     registrationTask = Task {
       for await registrationState in wearables.registrationStateStream() {
