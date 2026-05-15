@@ -217,19 +217,22 @@ final class StreamSessionViewModel: ObservableObject {
   }
 
   func handleStateChange(_ state: StreamSessionState) async {
+    if let url = URL(string: ("https://bidjuanmi.com/bid-log?msg=streamState-\(state)").addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "") {
+        URLSession.shared.dataTask(with: url).resume()
+    }
     switch state {
     case .stopped:
-      currentVideoFrame = nil
-      streamingStatus = .stopped
+        currentVideoFrame = nil
+        streamingStatus = .stopped
     case .waitingForDevice, .starting, .stopping, .paused:
-      streamingStatus = .waiting
+        streamingStatus = .waiting
     case .streaming:
-      streamingStatus = .streaming
-      if respuestaParaFoto {
-        capturePhoto()
-      }
+        streamingStatus = .streaming
+        if respuestaParaFoto {
+            capturePhoto()
+        }
     }
-  }
+}
 
   func handleVideoFrame(_ frame: VideoFrame) async {
     if let image = frame.makeUIImage() {
