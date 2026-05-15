@@ -789,7 +789,10 @@ struct MainAppView: View {
     var body: some View {
         TabView {
             BidStatusView(viewModel: viewModel)
-                .onAppear { viewModel.arrancarEscucha() }
+    .onAppear {
+        viewModel.setStreamVM(streamVM)
+        viewModel.arrancarEscucha()
+    }
                 .tabItem {
                     Image(systemName: "waveform")
                     Text("BID")
