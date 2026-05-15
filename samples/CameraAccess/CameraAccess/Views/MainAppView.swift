@@ -460,7 +460,7 @@ struct GafasView: View {
             }
         }
     }
-}
+
 
 // MARK: - Foto Análisis
 
