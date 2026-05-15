@@ -206,7 +206,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         if texto != self.textoAnterior {
           self.textoAnterior = texto
           self.envioTimer?.invalidate()
-          self.envioTimer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: false) { [weak self] _ in
+          self.envioTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { [weak self] _ in
             self?.pararYEnviar()
           }
         }
