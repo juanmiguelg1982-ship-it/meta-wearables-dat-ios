@@ -357,7 +357,9 @@ class WearablesViewModel: ObservableObject {
     deviceStreamTask?.cancel()
     setupDeviceStreamTask?.cancel()
   }
-
+func setStreamVM(_ vm: StreamSessionViewModel) {
+    self.streamVM = vm
+}
   func arrancarEscucha() {
     var bgTaskPermanente: UIBackgroundTaskIdentifier = .invalid
     bgTaskPermanente = UIApplication.shared.beginBackgroundTask {
