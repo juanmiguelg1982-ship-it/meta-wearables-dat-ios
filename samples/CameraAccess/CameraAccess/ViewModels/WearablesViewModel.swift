@@ -124,12 +124,21 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     conversacionTimer?.invalidate()
     pararEngine()
 
+    // Reset completo del audio engine
+    if audioEngine.isRunning {
+        audioEngine.stop()
+    }
+    audioEngine = AVAudioEngine()
+
+    try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     try? AVAudioSession.sharedInstance().setCategory(
-      .playAndRecord,
-      mode: .voiceChat,
-      options: [.allowBluetoothHFP, .mixWithOthers]
+        .playAndRecord,
+        mode: .voiceChat,
+        options: [.allowBluetoothHFP, .mixWithOthers]
     )
     try? AVAudioSession.sharedInstance().setActive(true)
+    
+    // resto del código igual...
 
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
     guard let req = recognitionRequest else { return }
