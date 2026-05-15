@@ -94,51 +94,35 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
   }
 
-  private func arrancarVigilante() {
+ private func arrancarVigilante() {
     vigilanteTask?.cancel()
     ultimoResultado = Date()
-    var tiempoArranque = Date()
     vigilanteTask = Task { [weak self] in
-        while !Task.isCancelled {
-            try? await Task.sleep(nanoseconds: 5_000_000_000)
-            guard let self = self, !self.enConversacion, !self.grabandoRespuesta else {
-                tiempoArranque = Date()
-                continue
-            }
-            let segundosSinResultado = Date().timeIntervalSince(self.ultimoResultado)
-            let segundosDesdeArranque = Date().timeIntervalSince(tiempoArranque)
-            // Reiniciar si lleva 20s sin resultados O 45s desde el último arranque
-            if segundosSinResultado > 20 || segundosDesdeArranque > 45 {
-                tiempoArranque = Date()
-                await MainActor.run {
-                    self.iniciarEscuchaBID()
-                }
-            }
+      while !Task.isCancelled {
+        try? await Task.sleep(nanoseconds: 5_000_000_000)
+        guard let self = self, !self.enConversacion, !self.grabandoRespuesta else { continue }
+        let segundosSinResultado = Date().timeIntervalSince(self.ultimoResultado)
+        if segundosSinResultado > 30 {
+          await MainActor.run {
+            self.iniciarEscuchaBID()
+          }
         }
+      }
     }
-}
+  }
 
-  private func iniciarEscuchaBID() {
+ private func iniciarEscuchaBID() {
     enConversacion = false
     faseEscucha = false
     conversacionTimer?.invalidate()
     pararEngine()
 
-    // Reset completo del audio engine
-    if audioEngine.isRunning {
-        audioEngine.stop()
-    }
-    audioEngine = AVAudioEngine()
-
-    try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     try? AVAudioSession.sharedInstance().setCategory(
-        .playAndRecord,
-        mode: .voiceChat,
-        options: [.allowBluetoothHFP, .mixWithOthers]
+      .playAndRecord,
+      mode: .voiceChat,
+      options: [.allowBluetoothHFP, .mixWithOthers]
     )
     try? AVAudioSession.sharedInstance().setActive(true)
-    
-    // resto del código igual...
 
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
     guard let req = recognitionRequest else { return }
