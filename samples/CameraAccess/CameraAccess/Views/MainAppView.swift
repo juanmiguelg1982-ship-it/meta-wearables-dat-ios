@@ -401,55 +401,55 @@ struct GafasView: View {
                             .padding(.horizontal, 16)
 
                             HStack(spacing: 12) {
-                                if streamVM.streamingStatus != .stopped {
-                                    Button {
-    Task { await streamVM.handleStartStreaming() }
-} label: {
-    HStack(spacing: 8) {
-        Image(systemName: "video.fill")
-        Text("VER DESDE GAFAS")
-            .font(.system(size: 13, design: .monospaced))
+    if streamVM.streamingStatus != .stopped {
+        Button {
+            Task { await streamVM.stopSession() }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "stop.fill")
+                Text("PARAR")
+                    .font(.system(size: 13, design: .monospaced))
+            }
+            .foregroundColor(Color.red)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 24)
+            .background(Color.red.opacity(0.15))
+            .cornerRadius(10)
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.red.opacity(0.4), lineWidth: 1))
+        }
+        Button {
+            streamVM.capturePhoto()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "camera.fill")
+                Text("FOTO")
+                    .font(.system(size: 13, design: .monospaced))
+            }
+            .foregroundColor(fondo)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 24)
+            .background(cyan)
+            .cornerRadius(10)
+        }
+        .disabled(streamVM.isCapturingPhoto)
+    } else {
+        Button {
+            Task { await streamVM.handleStartStreaming() }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "video.fill")
+                Text("VER DESDE GAFAS")
+                    .font(.system(size: 13, design: .monospaced))
+            }
+            .foregroundColor(fondo)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 24)
+            .background(viewModel.registrationState == .registered ? cyan : cyan.opacity(0.3))
+            .cornerRadius(10)
+        }
+        .disabled(viewModel.registrationState != .registered)
     }
-    .foregroundColor(fondo)
-    .padding(.vertical, 12)
-    .padding(.horizontal, 24)
-    .background(viewModel.registrationState == .registered ? cyan : cyan.opacity(0.3))
-    .cornerRadius(10)
-}
-.disabled(viewModel.registrationState != .registered)
-
-                                    Button {
-                                        streamVM.capturePhoto()
-                                    } label: {
-                                        HStack(spacing: 8) {
-                                            Image(systemName: "camera.fill")
-                                            Text("FOTO")
-                                                .font(.system(size: 13, design: .monospaced))
-                                        }
-                                        .foregroundColor(fondo)
-                                        .padding(.vertical, 12)
-                                        .padding(.horizontal, 24)
-                                        .background(cyan)
-                                        .cornerRadius(10)
-                                    }
-                                    .disabled(streamVM.isCapturingPhoto)
-                                } else {
-                                    Button {
-                                        Task { await streamVM.handleStartStreaming() }
-                                    } label: {
-                                        HStack(spacing: 8) {
-                                            Image(systemName: "video.fill")
-                                            Text("VER DESDE GAFAS")
-                                                .font(.system(size: 13, design: .monospaced))
-                                        }
-                                        .foregroundColor(fondo)
-                                        .padding(.vertical, 12)
-                                        .padding(.horizontal, 24)
-                                        .background(streamVM.isDeviceSessionReady ? cyan : cyan.opacity(0.3))
-                                        .cornerRadius(10)
-                                    }
-                                    .disabled(!streamVM.isDeviceSessionReady)
-                                }
+} 
                             }
                         }
 
