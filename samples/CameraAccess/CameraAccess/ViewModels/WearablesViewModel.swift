@@ -22,8 +22,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private var enConversacion = false
   private var ultimoResultado: Date = Date()
   private var vigilanteTask: Task<Void, Never>?
-  
-  
+
   static var instancia: BidEscuchaManager?
   static func pausarEngine() { instancia?.pausar() }
   static func reanudarEngine() { instancia?.reanudar() }
@@ -43,9 +42,9 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     guard !enConversacion, !grabandoRespuesta else { return }
     let segundos = Date().timeIntervalSince(ultimoResultado)
     if segundos > 30 {
-        DispatchQueue.main.async {
-            self.iniciarEscuchaBID()
-        }
+      DispatchQueue.main.async {
+        self.iniciarEscuchaBID()
+      }
     }
   }
 
@@ -321,7 +320,7 @@ class WearablesViewModel: ObservableObject {
   private var compatibilityListenerTokens: [DeviceIdentifier: AnyListenerToken] = [:]
   private var bidEscucha: BidEscuchaManager?
   private var streamVM: StreamSessionViewModel?
-  
+
   init(wearables: WearablesInterface) {
     self.wearables = wearables
     self.devices = wearables.devices
@@ -370,8 +369,8 @@ class WearablesViewModel: ObservableObject {
       bgTaskPermanente = UIApplication.shared.beginBackgroundTask { }
     }
     if streamVM == nil {
-    streamVM = StreamSessionViewModel(wearables: wearables)
-}
+      streamVM = StreamSessionViewModel(wearables: wearables)
+    }
     guard bidEscucha == nil else { return }
     bidEscucha = BidEscuchaManager { [weak self] estado in
       Task { @MainActor in self?.bidStatus = estado }
@@ -388,7 +387,7 @@ class WearablesViewModel: ObservableObject {
       let vm = self.streamVM ?? StreamSessionViewModel(wearables: self.wearables)
       await vm.enviarMensajeABid(mensaje: texto)
       if vm.respuestaParaFoto {
-          await vm.handleStartStreaming()
+        await vm.handleStartStreaming()
       }
 
       await withCheckedContinuation { continuation in
@@ -424,7 +423,60 @@ class WearablesViewModel: ObservableObject {
         BidEscuchaManager.instancia?.reanudar()
       }
     }
+
+    // Long polling — mensajes de voz pendientes del servidor
+    Task {
+      while true {
+        try? await Task.sleep(nanoseconds: 5_000_000_000)
+        await comprobarVozPendiente()
+      }
+    }
+
     bidEscucha?.arrancar()
+
+    // Al arrancar, leer mensajes pendientes tras 3 segundos
+    Task {
+      try? await Task.sleep(nanoseconds: 3_000_000_000)
+      await comprobarVozPendiente()
+    }
+  }
+
+  func comprobarVozPendiente() async {
+    guard let url = URL(string: "https://bidjuanmi.com/bid-voz-pendiente") else { return }
+    do {
+      let (data, _) = try await URLSession.shared.data(from: url)
+      guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let mensaje = json["mensaje"] as? String,
+            !mensaje.isEmpty else { return }
+      let vm = self.streamVM ?? StreamSessionViewModel(wearables: self.wearables)
+      await vm.reproducirAudio(texto: mensaje)
+      await withCheckedContinuation { continuation in
+        var observador: NSObjectProtocol?
+        var resumido = false
+        observador = NotificationCenter.default.addObserver(
+          forName: NSNotification.Name("BIDAudioTerminado"),
+          object: nil,
+          queue: .main
+        ) { _ in
+          guard !resumido else { return }
+          resumido = true
+          if let obs = observador {
+            NotificationCenter.default.removeObserver(obs)
+            observador = nil
+          }
+          continuation.resume()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) {
+          guard !resumido else { return }
+          resumido = true
+          if let obs = observador {
+            NotificationCenter.default.removeObserver(obs)
+            observador = nil
+          }
+          continuation.resume()
+        }
+      }
+    } catch {}
   }
 
   private func setupDeviceStream() async {
