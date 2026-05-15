@@ -94,22 +94,25 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
   }
 
- private func arrancarVigilante() {
+private func arrancarVigilante() {
     vigilanteTask?.cancel()
     ultimoResultado = Date()
     vigilanteTask = Task { [weak self] in
-      while !Task.isCancelled {
-        try? await Task.sleep(nanoseconds: 5_000_000_000)
-        guard let self = self, !self.enConversacion, !self.grabandoRespuesta else { continue }
-        let segundosSinResultado = Date().timeIntervalSince(self.ultimoResultado)
-        if segundosSinResultado > 30 {
-          await MainActor.run {
-            self.iniciarEscuchaBID()
-          }
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            guard let self = self, !self.enConversacion, !self.grabandoRespuesta else { continue }
+            let segundosSinResultado = Date().timeIntervalSince(self.ultimoResultado)
+            if segundosSinResultado > 25 {
+                await MainActor.run {
+                    // Recrear speechRecognizer entero
+                    self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
+                    self.speechRecognizer?.delegate = self
+                    self.iniciarEscuchaBID()
+                }
+            }
         }
-      }
     }
-  }
+}
 
  private func iniciarEscuchaBID() {
     enConversacion = false
