@@ -11,24 +11,23 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var lon: Double = 0
 
     override init() {
-    super.init()
-    manager.delegate = self
-    manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-    manager.distanceFilter = 200
-    manager.requestAlwaysAuthorization()
-    manager.startUpdatingLocation()
-    manager.allowsBackgroundLocationUpdates = true
-    manager.pausesLocationUpdatesAutomatically = false
-}
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        manager.distanceFilter = 200
+        manager.requestAlwaysAuthorization()
+        manager.startUpdatingLocation()
+        manager.allowsBackgroundLocationUpdates = true
+        manager.pausesLocationUpdatesAutomatically = false
+    }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-    guard let loc = locations.last else { return }
-    lat = loc.coordinate.latitude
-    lon = loc.coordinate.longitude
-    // Mandar al servidor cuando hay cambio de ubicación
-    guard let url = URL(string: "https://bidjuanmi.com/ubicacion?lat=\(lat)&lon=\(lon)") else { return }
-    URLSession.shared.dataTask(with: url).resume()
-}
+        guard let loc = locations.last else { return }
+        lat = loc.coordinate.latitude
+        lon = loc.coordinate.longitude
+        guard let url = URL(string: "https://bidjuanmi.com/ubicacion?lat=\(lat)&lon=\(lon)") else { return }
+        URLSession.shared.dataTask(with: url).resume()
+    }
 }
 
 // MARK: - Web View
@@ -292,11 +291,12 @@ struct BidStatusView: View {
                     .padding(.vertical, 8)
                     .background(Color.black.opacity(0.5))
                     .cornerRadius(6)
-                    .padding(.bottom, 40) 
+                    .padding(.bottom, 40)
             }
         }
     }
 }
+
 // MARK: - Foto Análisis
 
 class FotoAnalisisViewModel: ObservableObject {
@@ -305,11 +305,12 @@ class FotoAnalisisViewModel: ObservableObject {
     @Published var respuesta: String = ""
     @Published var cargando: Bool = false
     @Published var mostrarCamara: Bool = false
+    var locationManager: LocationManager?
 
     func analizarFoto() async {
         guard let imagen = fotoSeleccionada,
               let jpegData = imagen.jpegData(compressionQuality: 0.7) else { return }
-        
+
         let base64 = jpegData.base64EncodedString()
         let preguntaFinal = pregunta.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? "¿Qué ves en esta imagen?"
@@ -321,8 +322,13 @@ class FotoAnalisisViewModel: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let body: [String: Any] = ["imagen": base64, "pregunta": preguntaFinal]
+
+        let body: [String: Any] = [
+            "imagen": base64,
+            "pregunta": preguntaFinal,
+            "lat": locationManager?.lat ?? 0,
+            "lon": locationManager?.lon ?? 0
+        ]
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
         do {
@@ -384,6 +390,7 @@ struct CamaraView: UIViewControllerRepresentable {
 
 struct FotoAnalisisView: View {
     @StateObject private var vm = FotoAnalisisViewModel()
+    @EnvironmentObject var locationManager: LocationManager
     @FocusState private var tecladoActivo: Bool
     let cyan = Color(red: 0, green: 0.71, blue: 0.85)
     let fondo = Color(red: 0.01, green: 0.03, blue: 0.06)
@@ -393,7 +400,6 @@ struct FotoAnalisisView: View {
             fondo.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header
                 HStack {
                     Text("FOTO")
                         .font(.system(size: 13, design: .monospaced))
@@ -408,7 +414,6 @@ struct FotoAnalisisView: View {
                 ScrollView {
                     VStack(spacing: 20) {
 
-                        // Foto
                         ZStack {
                             RoundedRectangle(cornerRadius: 12)
                                 .stroke(cyan.opacity(0.3), lineWidth: 1)
@@ -438,7 +443,6 @@ struct FotoAnalisisView: View {
                             vm.mostrarCamara = true
                         }
 
-                        // Botón cámara
                         Button {
                             tecladoActivo = false
                             vm.mostrarCamara = true
@@ -455,7 +459,6 @@ struct FotoAnalisisView: View {
                             .cornerRadius(10)
                         }
 
-                        // Campo pregunta
                         VStack(alignment: .leading, spacing: 8) {
                             Text("¿QUÉ QUIERES SABER?")
                                 .font(.system(size: 10, design: .monospaced))
@@ -473,7 +476,6 @@ struct FotoAnalisisView: View {
                         }
                         .padding(.horizontal, 16)
 
-                        // Botón analizar
                         Button {
                             tecladoActivo = false
                             Task { await vm.analizarFoto() }
@@ -495,7 +497,6 @@ struct FotoAnalisisView: View {
                         }
                         .disabled(vm.fotoSeleccionada == nil || vm.cargando)
 
-                        // Respuesta
                         if !vm.respuesta.isEmpty {
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
@@ -530,8 +531,12 @@ struct FotoAnalisisView: View {
         .sheet(isPresented: $vm.mostrarCamara) {
             CamaraView(imagen: $vm.fotoSeleccionada)
         }
+        .onAppear {
+            vm.locationManager = locationManager
+        }
     }
 }
+
 // MARK: - Main App View
 
 struct MainAppView: View {
@@ -560,11 +565,13 @@ struct MainAppView: View {
                     Image(systemName: "bubble.left.and.bubble.right")
                     Text("CHAT")
                 }
+
             FotoAnalisisView()
                 .tabItem {
                     Image(systemName: "camera.fill")
                     Text("FOTO")
-                }   
+                }
+
             BidWebView(url: URL(string: "https://bidjuanmi.com?app_token=bid-app-token-juanmi")!)
                 .ignoresSafeArea()
                 .tabItem {
