@@ -775,7 +775,18 @@ struct PantallaItem: Identifiable {
 class PantallaViewModel: ObservableObject {
     @Published var items: [PantallaItem] = []
     @Published var itemSeleccionado: PantallaItem? = nil
-    
+    private var timer: Timer?
+
+    init() {
+        timer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
+            self?.cargar()
+        }
+    }
+
+    deinit {
+        timer?.invalidate()
+    }
+
     func cargar() {
         guard let url = URL(string: "https://bidjuanmi.com/pantalla-lista") else { return }
         URLSession.shared.dataTask(with: url) { data, _, _ in
