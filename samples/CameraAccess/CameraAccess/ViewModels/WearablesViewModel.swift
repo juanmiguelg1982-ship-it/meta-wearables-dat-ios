@@ -110,7 +110,13 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
   }
 
-  private func iniciarEscuchaBID() {
+ private func iniciarEscuchaBID() {
+    let msg = "engine:\(audioEngine.isRunning) conv:\(enConversacion) grab:\(grabandoRespuesta)"
+    let msgEnc = msg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? msg
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msgEnc)")!).resume()
+
+    enConversacion = false
+    // ... resto igual
     enConversacion = false
     faseEscucha = false
     conversacionTimer?.invalidate()
