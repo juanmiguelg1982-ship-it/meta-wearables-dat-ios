@@ -42,32 +42,17 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     guard !enConversacion, !grabandoRespuesta else { return }
     let segundos = Date().timeIntervalSince(ultimoResultado)
     if segundos > 30 {
-      DispatchQueue.main.async {
-        self.iniciarEscuchaBID()
-      }
+      DispatchQueue.main.async { self.iniciarEscuchaBID() }
     }
   }
 
   func arrancar() {
-    try? AVAudioSession.sharedInstance().setCategory(
-      .playAndRecord,
-      mode: .voiceChat,
-      options: [.allowBluetoothHFP, .mixWithOthers]
-    )
+    try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
     try? AVAudioSession.sharedInstance().setActive(true)
-
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(manejarInterrupcionAudio),
-      name: AVAudioSession.interruptionNotification,
-      object: nil
-    )
-
+    NotificationCenter.default.addObserver(self, selector: #selector(manejarInterrupcionAudio), name: AVAudioSession.interruptionNotification, object: nil)
     SFSpeechRecognizer.requestAuthorization { [weak self] status in
       guard status == .authorized else { return }
-      DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-        self?.iniciarEscuchaBID()
-      }
+      DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self?.iniciarEscuchaBID() }
     }
   }
 
@@ -82,11 +67,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
           appDelegate.silencioPlayer?.play()
         }
-        if self.enConversacion {
-          self.iniciarEscuchaPregunta()
-        } else {
-          self.iniciarEscuchaBID()
-        }
+        if self.enConversacion { self.iniciarEscuchaPregunta() }
+        else { self.iniciarEscuchaBID() }
       }
     }
   }
@@ -95,38 +77,31 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     vigilanteTask?.cancel()
     ultimoResultado = Date()
     vigilanteTask = Task { [weak self] in
-        while !Task.isCancelled {
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            guard let self = self, !self.enConversacion, !self.grabandoRespuesta else { continue }
-            let segundosSinResultado = Date().timeIntervalSince(self.ultimoResultado)
-            if segundosSinResultado > 25 {
-                await MainActor.run {
-                    self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
-                    self.speechRecognizer?.delegate = self
-                    self.iniciarEscuchaBID()
-                }
-            }
+      while !Task.isCancelled {
+        try? await Task.sleep(nanoseconds: 3_000_000_000)
+        guard let self = self, !self.enConversacion, !self.grabandoRespuesta else { continue }
+        if Date().timeIntervalSince(self.ultimoResultado) > 25 {
+          await MainActor.run {
+            self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
+            self.speechRecognizer?.delegate = self
+            self.iniciarEscuchaBID()
+          }
         }
+      }
     }
-}
+  }
 
- private func iniciarEscuchaBID() {
+  private func iniciarEscuchaBID() {
     let msg = "engine:\(audioEngine.isRunning) conv:\(enConversacion) grab:\(grabandoRespuesta)"
     let msgEnc = msg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? msg
     URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msgEnc)")!).resume()
 
     enConversacion = false
-    // ... resto igual
-    enConversacion = false
     faseEscucha = false
     conversacionTimer?.invalidate()
     pararEngine()
 
-    try? AVAudioSession.sharedInstance().setCategory(
-      .playAndRecord,
-      mode: .voiceChat,
-      options: [.allowBluetoothHFP, .mixWithOthers]
-    )
+    try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
     try? AVAudioSession.sharedInstance().setActive(true)
 
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
@@ -143,15 +118,14 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
           DispatchQueue.main.async { self.wakeWordDetectado() }
         }
       }
-     if error != nil {
-    // Solo reintentar si no estamos ya en bucle
-    guard !self.faseEscucha, !self.enConversacion else { return }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
-        guard !self.enConversacion, !self.grabandoRespuesta else { return }
-        self.iniciarEscuchaBID()
+      if error != nil {
+        guard !self.faseEscucha, !self.enConversacion else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+          guard !self.enConversacion, !self.grabandoRespuesta else { return }
+          self.iniciarEscuchaBID()
+        }
+      }
     }
-}
-   }                                                                 
 
     arrancarEngine()
     onEstado("Escuchando... di OYE")
@@ -173,17 +147,10 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
       appDelegate.silencioPlayer?.play()
     }
-    try? AVAudioSession.sharedInstance().setCategory(
-      .playAndRecord,
-      mode: .voiceChat,
-      options: [.allowBluetoothHFP, .mixWithOthers]
-    )
+    try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
     try? AVAudioSession.sharedInstance().setActive(true)
-    if self.enConversacion {
-      self.iniciarEscuchaPregunta()
-    } else {
-      self.iniciarEscuchaBID()
-    }
+    if enConversacion { iniciarEscuchaPregunta() }
+    else { iniciarEscuchaBID() }
   }
 
   private func iniciarEscuchaPregunta() {
@@ -215,21 +182,16 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
             self?.pararYEnviar()
           }
         }
-        if result.isFinal {
-          DispatchQueue.main.async { self.pararYEnviar() }
-        }
+        if result.isFinal { DispatchQueue.main.async { self.pararYEnviar() } }
       }
       if error != nil && self.grabandoRespuesta {
         DispatchQueue.main.async { self.pararYEnviar() }
       }
     }
-
     arrancarEngine()
   }
 
-  func pausarConversacionTimer() {
-    conversacionTimer?.invalidate()
-  }
+  func pausarConversacionTimer() { conversacionTimer?.invalidate() }
 
   func reiniciarTimerConversacion() {
     conversacionTimer?.invalidate()
@@ -246,9 +208,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     pararEngine()
     AudioServicesPlaySystemSound(1057)
     onEstado("Conversacion terminada")
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-      self.iniciarEscuchaBID()
-    }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciarEscuchaBID() }
   }
 
   private func pararYEnviar() {
@@ -260,11 +220,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     guard !transcripcion.isEmpty else {
       onEstado("No te he escuchado")
       DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-        if self.enConversacion {
-          self.iniciarEscuchaPregunta()
-        } else {
-          self.iniciarEscuchaBID()
-        }
+        if self.enConversacion { self.iniciarEscuchaPregunta() }
+        else { self.iniciarEscuchaBID() }
       }
       return
     }
@@ -279,9 +236,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     recognitionTask = nil
     recognitionRequest?.endAudio()
     recognitionRequest = nil
-    if audioEngine.isRunning {
-      audioEngine.inputNode.removeTap(onBus: 0)
-    }
+    if audioEngine.isRunning { audioEngine.inputNode.removeTap(onBus: 0) }
   }
 
   private func arrancarEngine() {
@@ -289,19 +244,17 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     let formato = inputNode.outputFormat(forBus: 0)
     guard formato.sampleRate > 0 else { return }
     inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
-        self?.recognitionRequest?.append(buffer)
+      self?.recognitionRequest?.append(buffer)
     }
     if !audioEngine.isRunning {
-        do {
-            try audioEngine.start()
-        } catch {
-            audioEngine.inputNode.removeTap(onBus: 0)
-            // No reintentar aquí — el vigilante lo hará
-        }
+      do {
+        try audioEngine.start()
+      } catch {
+        audioEngine.inputNode.removeTap(onBus: 0)
+      }
     }
+  }
 }
- }
- 
 
 @MainActor
 class WearablesViewModel: ObservableObject {
@@ -318,7 +271,7 @@ class WearablesViewModel: ObservableObject {
   private let wearables: WearablesInterface
   private var compatibilityListenerTokens: [DeviceIdentifier: AnyListenerToken] = [:]
   private var bidEscucha: BidEscuchaManager?
-  private var streamVM: StreamSessionViewModel?
+  var streamVM: StreamSessionViewModel?
 
   init(wearables: WearablesInterface) {
     self.wearables = wearables
@@ -357,9 +310,7 @@ class WearablesViewModel: ObservableObject {
     deviceStreamTask?.cancel()
     setupDeviceStreamTask?.cancel()
   }
-func setStreamVM(_ vm: StreamSessionViewModel) {
-    self.streamVM = vm
-}
+
   func arrancarEscucha() {
     var bgTaskPermanente: UIBackgroundTaskIdentifier = .invalid
     bgTaskPermanente = UIApplication.shared.beginBackgroundTask {
@@ -367,11 +318,8 @@ func setStreamVM(_ vm: StreamSessionViewModel) {
       bgTaskPermanente = UIApplication.shared.beginBackgroundTask { }
     }
     if streamVM == nil {
-    streamVM = StreamSessionViewModel(wearables: wearables)
-    if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=streamVM-creado") {
-        URLSession.shared.dataTask(with: url).resume()
+      streamVM = StreamSessionViewModel(wearables: wearables)
     }
-}
     guard bidEscucha == nil else { return }
     bidEscucha = BidEscuchaManager { [weak self] estado in
       Task { @MainActor in self?.bidStatus = estado }
@@ -400,19 +348,13 @@ func setStreamVM(_ vm: StreamSessionViewModel) {
         ) { _ in
           guard !resumido else { return }
           resumido = true
-          if let obs = observador {
-            NotificationCenter.default.removeObserver(obs)
-            observador = nil
-          }
+          if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
           continuation.resume()
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) {
           guard !resumido else { return }
           resumido = true
-          if let obs = observador {
-            NotificationCenter.default.removeObserver(obs)
-            observador = nil
-          }
+          if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
           continuation.resume()
         }
       }
@@ -457,19 +399,13 @@ func setStreamVM(_ vm: StreamSessionViewModel) {
         ) { _ in
           guard !resumido else { return }
           resumido = true
-          if let obs = observador {
-            NotificationCenter.default.removeObserver(obs)
-            observador = nil
-          }
+          if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
           continuation.resume()
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) {
           guard !resumido else { return }
           resumido = true
-          if let obs = observador {
-            NotificationCenter.default.removeObserver(obs)
-            observador = nil
-          }
+          if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
           continuation.resume()
         }
       }
