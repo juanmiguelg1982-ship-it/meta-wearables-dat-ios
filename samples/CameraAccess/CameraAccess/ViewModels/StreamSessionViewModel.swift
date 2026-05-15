@@ -186,42 +186,37 @@ final class StreamSessionViewModel: ObservableObject {
     case .waitingForDevice, .starting, .stopping, .paused:
       streamingStatus = .waiting
     case .streaming:
-    streamingStatus = .streaming
-    if respuestaParaFoto {
+      streamingStatus = .streaming
+      if respuestaParaFoto {
         capturePhoto()
-        await enviarMensajeABid(mensaje: "Foto capturada, analizando...")
-    }
+      }
     }
   }
 
   func handleVideoFrame(_ frame: VideoFrame) async {
     if let image = frame.makeUIImage() {
       currentVideoFrame = image
-      if respuestaParaFoto {
-        respuestaParaFoto = false
-        if let jpegData = image.jpegData(compressionQuality: 0.7) {
-          await stopSession()
-          await analizarImagen(data: jpegData)
-        }
-      }
     }
   }
 
   func handlePhotoData(_ data: PhotoData) async {
     isCapturingPhoto = false
-    if let image = UIImage(data: data.data) {
-      capturedPhoto = image
-      showPhotoPreview = true
-      await analizarImagen(data: data.data)
-    }
+    respuestaParaFoto = false
+    await stopSession()
+    await analizarImagen(data: data.data)
   }
 
   func analizarImagen(data: Data) async {
+    let base64 = data.base64EncodedString()
     guard let url = URL(string: "https://bidjuanmi.com/analizar-imagen") else { return }
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
-    request.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
-    request.httpBody = data
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    let body: [String: Any] = [
+      "imagen": base64,
+      "pregunta": "Describe brevemente en español lo que ves en esta imagen. Se conciso."
+    ]
+    request.httpBody = try? JSONSerialization.data(withJSONObject: body)
     do {
       let (responseData, _) = try await URLSession.shared.data(for: request)
       if let json = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
