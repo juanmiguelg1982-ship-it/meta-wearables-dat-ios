@@ -91,26 +91,17 @@ final class StreamSessionViewModel: ObservableObject {
     if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=handleStartStreaming-inicio") {
         URLSession.shared.dataTask(with: url).resume()
     }
-    let permission = Permission.camera
-    do {
-        var status = try await wearables.checkPermissionStatus(permission)
-        if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=permission-\(status)") {
-            URLSession.shared.dataTask(with: url).resume()
-        }
-        if status != .granted {
-            status = try await wearables.requestPermission(permission)
-        }
-        guard status == .granted else {
-            showErrorMsg("Permission denied")
-            return
-        }
-        await startSession()
-    } catch {
-        if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=handleStartStreaming-error") {
-            URLSession.shared.dataTask(with: url).resume()
-        }
-        showErrorMsg("Permission error: \(error.description)")
+    let authStatus = AVCaptureDevice.authorizationStatus(for: .video)
+    if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=authStatus-\(authStatus.rawValue)") {
+        URLSession.shared.dataTask(with: url).resume()
     }
+    guard authStatus == .authorized else {
+        if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=camara-no-autorizada") {
+            URLSession.shared.dataTask(with: url).resume()
+        }
+        return
+    }
+    await startSession()
 }
 
   func stopSession() async {
