@@ -347,14 +347,21 @@ class FotoAnalisisViewModel: ObservableObject {
     }
 
     func reproducirAudio(texto: String) async {
-        guard var components = URLComponents(string: "https://bidjuanmi.com/tts") else { return }
-        components.queryItems = [URLQueryItem(name: "text", value: texto)]
-        guard let url = components.url else { return }
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            BidAudioPlayer.shared.play(data: data)
-        } catch {}
-    }
+    guard var components = URLComponents(string: "https://bidjuanmi.com/tts") else { return }
+    components.queryItems = [URLQueryItem(name: "text", value: texto)]
+    guard let url = components.url else { return }
+    do {
+        let (data, _) = try await URLSession.shared.data(from: url)
+        await MainActor.run {
+            try? AVAudioSession.sharedInstance().setCategory(
+                .playAndRecord,
+                mode: .voiceChat,
+                options: [.allowBluetoothHFP, .mixWithOthers]
+            )
+            try? AVAudioSession.sharedInstance().setActive(true)
+        }
+        BidAudioPlayer.shared.play(data: data)
+    } catch {}
 }
 
 struct CamaraView: UIViewControllerRepresentable {
