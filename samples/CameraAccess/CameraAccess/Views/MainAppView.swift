@@ -1,8 +1,8 @@
+import AVFoundation
 import CoreLocation
 import MWDATCore
 import SwiftUI
 import WebKit
-import AVFoundation
 
 // MARK: - Geolocalización
 
@@ -94,9 +94,7 @@ class ChatViewModel: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
         URLSession.shared.dataTask(with: request) { _, _, _ in
-            DispatchQueue.main.async {
-                self.mensajes = []
-            }
+            DispatchQueue.main.async { self.mensajes = [] }
         }.resume()
     }
 
@@ -105,12 +103,10 @@ class ChatViewModel: ObservableObject {
         guard !texto.isEmpty else { return }
         textoEscrito = ""
         mensajes.append(Mensaje(role: "user", content: texto))
-
         let lat = locationManager?.lat ?? 0
         let lon = locationManager?.lon ?? 0
         guard let encoded = texto.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
               let url = URL(string: "https://bidjuanmi.com/chat-stream?message=\(encoded)&lat=\(lat)&lon=\(lon)") else { return }
-
         var respuestaCompleta = ""
         URLSession.shared.dataTask(with: url) { data, _, _ in
             if let data = data, let texto = String(data: data, encoding: .utf8) {
@@ -142,7 +138,6 @@ struct ChatView: View {
     var body: some View {
         ZStack {
             Color(red: 0.01, green: 0.03, blue: 0.06).ignoresSafeArea()
-
             VStack(spacing: 0) {
                 HStack {
                     Text("CHAT")
@@ -150,9 +145,7 @@ struct ChatView: View {
                         .foregroundColor(Color(red: 0, green: 0.71, blue: 0.85))
                         .tracking(3)
                     Spacer()
-                    Button {
-                        vm.borrarHistorial()
-                    } label: {
+                    Button { vm.borrarHistorial() } label: {
                         Image(systemName: "trash")
                             .foregroundColor(Color(red: 0, green: 0.71, blue: 0.85).opacity(0.6))
                     }
@@ -228,7 +221,6 @@ struct ChatView: View {
                         .cornerRadius(20)
                         .focused($tecladoActivo)
                         .onSubmit { vm.enviarMensaje() }
-
                     Button {
                         vm.enviarMensaje()
                         tecladoActivo = false
@@ -255,36 +247,33 @@ struct ChatView: View {
 struct BidStatusView: View {
     @ObservedObject var viewModel: WearablesViewModel
     @EnvironmentObject var locationManager: LocationManager
+    let cyan = Color(red: 0, green: 0.71, blue: 0.85)
+    let fondo = Color(red: 0.01, green: 0.03, blue: 0.06)
 
     var body: some View {
         ZStack {
-            Color(red: 0.01, green: 0.03, blue: 0.06).ignoresSafeArea()
-
+            fondo.ignoresSafeArea()
             VStack(spacing: 0) {
                 Spacer()
-
                 VStack(spacing: 16) {
                     ZStack {
                         Circle()
-                            .stroke(Color(red: 0, green: 0.71, blue: 0.85).opacity(0.2), lineWidth: 1)
+                            .stroke(cyan.opacity(0.2), lineWidth: 1)
                             .frame(width: 120, height: 120)
                         Circle()
-                            .stroke(Color(red: 0, green: 0.71, blue: 0.85).opacity(0.1), lineWidth: 1)
+                            .stroke(cyan.opacity(0.1), lineWidth: 1)
                             .frame(width: 90, height: 90)
                         Text("BID")
                             .font(.system(size: 36, weight: .thin, design: .monospaced))
-                            .foregroundColor(Color(red: 0, green: 0.71, blue: 0.85))
+                            .foregroundColor(cyan)
                             .tracking(8)
                     }
-
                     Text("ASISTENTE PERSONAL")
                         .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(Color(red: 0, green: 0.71, blue: 0.85).opacity(0.4))
+                        .foregroundColor(cyan.opacity(0.4))
                         .tracking(4)
                 }
-
                 Spacer()
-
                 Text(viewModel.bidStatus)
                     .font(.system(size: 12, design: .monospaced))
                     .foregroundColor(.yellow)
@@ -293,6 +282,187 @@ struct BidStatusView: View {
                     .background(Color.black.opacity(0.5))
                     .cornerRadius(6)
                     .padding(.bottom, 40)
+            }
+        }
+    }
+}
+
+// MARK: - Gafas View
+
+struct GafasView: View {
+    @ObservedObject var viewModel: WearablesViewModel
+    @ObservedObject var streamVM: StreamSessionViewModel
+    let cyan = Color(red: 0, green: 0.71, blue: 0.85)
+    let fondo = Color(red: 0.01, green: 0.03, blue: 0.06)
+
+    var body: some View {
+        ZStack {
+            fondo.ignoresSafeArea()
+            VStack(spacing: 0) {
+                HStack {
+                    Text("GAFAS")
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundColor(cyan)
+                        .tracking(3)
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color(red: 0.01, green: 0.05, blue: 0.1))
+
+                ScrollView {
+                    VStack(spacing: 20) {
+
+                        // Estado conexión
+                        HStack {
+                            Circle()
+                                .fill(viewModel.registrationState == .registered ? cyan : Color.red)
+                                .frame(width: 10, height: 10)
+                            Text(viewModel.registrationState == .registered ? "GAFAS CONECTADAS" : "GAFAS NO CONECTADAS")
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundColor(viewModel.registrationState == .registered ? cyan : Color.red)
+                                .tracking(2)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 20)
+
+                        // Botón conectar/desconectar
+                        if viewModel.registrationState != .registered {
+                            Button {
+                                viewModel.connectGlasses()
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "eyeglasses")
+                                    Text(viewModel.registrationState == .registering ? "CONECTANDO..." : "CONECTAR GAFAS")
+                                        .font(.system(size: 13, design: .monospaced))
+                                        .tracking(2)
+                                }
+                                .foregroundColor(fondo)
+                                .padding(.vertical, 14)
+                                .padding(.horizontal, 28)
+                                .background(cyan)
+                                .cornerRadius(10)
+                            }
+                            .disabled(viewModel.registrationState == .registering)
+                        } else {
+                            Button {
+                                viewModel.disconnectGlasses()
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "eyeglasses")
+                                    Text("DESCONECTAR GAFAS")
+                                        .font(.system(size: 13, design: .monospaced))
+                                        .tracking(2)
+                                }
+                                .foregroundColor(Color.red)
+                                .padding(.vertical, 14)
+                                .padding(.horizontal, 28)
+                                .background(Color.red.opacity(0.15))
+                                .cornerRadius(10)
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.red.opacity(0.4), lineWidth: 1))
+                            }
+                        }
+
+                        // Separador
+                        Rectangle()
+                            .fill(cyan.opacity(0.1))
+                            .frame(height: 1)
+                            .padding(.horizontal, 16)
+
+                        // Stream manual
+                        VStack(spacing: 12) {
+                            Text("CAMARA GAFAS")
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundColor(cyan.opacity(0.5))
+                                .tracking(2)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 16)
+
+                            // Preview stream
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(cyan.opacity(0.3), lineWidth: 1)
+                                    .frame(height: 220)
+                                    .background(Color(red: 0.02, green: 0.06, blue: 0.12).cornerRadius(12))
+
+                                if let frame = streamVM.currentVideoFrame {
+                                    Image(uiImage: frame)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(height: 220)
+                                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                                } else {
+                                    VStack(spacing: 8) {
+                                        Image(systemName: "video.slash")
+                                            .font(.system(size: 36))
+                                            .foregroundColor(cyan.opacity(0.3))
+                                        Text(streamVM.streamingStatus == .waiting ? "Conectando..." : "Stream inactivo")
+                                            .font(.system(size: 11, design: .monospaced))
+                                            .foregroundColor(cyan.opacity(0.3))
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 16)
+
+                            // Botones stream
+                            HStack(spacing: 12) {
+                                if streamVM.isStreaming {
+                                    Button {
+                                        Task { await streamVM.stopSession() }
+                                    } label: {
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "stop.fill")
+                                            Text("PARAR")
+                                                .font(.system(size: 13, design: .monospaced))
+                                        }
+                                        .foregroundColor(Color.red)
+                                        .padding(.vertical, 12)
+                                        .padding(.horizontal, 24)
+                                        .background(Color.red.opacity(0.15))
+                                        .cornerRadius(10)
+                                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.red.opacity(0.4), lineWidth: 1))
+                                    }
+
+                                    Button {
+                                        streamVM.capturePhoto()
+                                    } label: {
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "camera.fill")
+                                            Text("FOTO")
+                                                .font(.system(size: 13, design: .monospaced))
+                                        }
+                                        .foregroundColor(fondo)
+                                        .padding(.vertical, 12)
+                                        .padding(.horizontal, 24)
+                                        .background(cyan)
+                                        .cornerRadius(10)
+                                    }
+                                    .disabled(streamVM.isCapturingPhoto)
+                                } else {
+                                    Button {
+                                        Task { await streamVM.handleStartStreaming() }
+                                    } label: {
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "video.fill")
+                                            Text("VER DESDE GAFAS")
+                                                .font(.system(size: 13, design: .monospaced))
+                                        }
+                                        .foregroundColor(fondo)
+                                        .padding(.vertical, 12)
+                                        .padding(.horizontal, 24)
+                                        .background(viewModel.registrationState == .registered ? cyan : cyan.opacity(0.3))
+                                        .cornerRadius(10)
+                                    }
+                                    .disabled(viewModel.registrationState != .registered)
+                                }
+                            }
+                        }
+
+                        Spacer(minLength: 40)
+                    }
+                    .padding(.top, 8)
+                }
             }
         }
     }
@@ -311,19 +481,15 @@ class FotoAnalisisViewModel: ObservableObject {
     func analizarFoto() async {
         guard let imagen = fotoSeleccionada,
               let jpegData = imagen.jpegData(compressionQuality: 0.7) else { return }
-
         let base64 = jpegData.base64EncodedString()
         let preguntaFinal = pregunta.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? "¿Qué ves en esta imagen?"
             : pregunta
-
         await MainActor.run { cargando = true; respuesta = "" }
-
         guard let url = URL(string: "https://bidjuanmi.com/analizar-imagen") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
         let body: [String: Any] = [
             "imagen": base64,
             "pregunta": preguntaFinal,
@@ -331,7 +497,6 @@ class FotoAnalisisViewModel: ObservableObject {
             "lon": locationManager?.lon ?? 0
         ]
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-
         do {
             let (data, _) = try await URLSession.shared.data(for: request)
             if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -348,22 +513,22 @@ class FotoAnalisisViewModel: ObservableObject {
     }
 
     func reproducirAudio(texto: String) async {
-    guard var components = URLComponents(string: "https://bidjuanmi.com/tts") else { return }
-    components.queryItems = [URLQueryItem(name: "text", value: texto)]
-    guard let url = components.url else { return }
-    do {
-        let (data, _) = try await URLSession.shared.data(from: url)
-        await MainActor.run {
-            try? AVAudioSession.sharedInstance().setCategory(
-                .playAndRecord,
-                mode: .voiceChat,
-                options: [.allowBluetoothHFP, .mixWithOthers]
-            )
-            try? AVAudioSession.sharedInstance().setActive(true)
-        }
-        BidAudioPlayer.shared.play(data: data)
-    } catch {}
-    }     
+        guard var components = URLComponents(string: "https://bidjuanmi.com/tts") else { return }
+        components.queryItems = [URLQueryItem(name: "text", value: texto)]
+        guard let url = components.url else { return }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            await MainActor.run {
+                try? AVAudioSession.sharedInstance().setCategory(
+                    .playAndRecord,
+                    mode: .voiceChat,
+                    options: [.allowBluetoothHFP, .mixWithOthers]
+                )
+                try? AVAudioSession.sharedInstance().setActive(true)
+            }
+            BidAudioPlayer.shared.play(data: data)
+        } catch {}
+    }
 }
 
 struct CamaraView: UIViewControllerRepresentable {
@@ -384,13 +549,11 @@ struct CamaraView: UIViewControllerRepresentable {
     class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
         let parent: CamaraView
         init(_ parent: CamaraView) { self.parent = parent }
-
         func imagePickerController(_ picker: UIImagePickerController,
                                    didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
             parent.imagen = info[.originalImage] as? UIImage
             parent.dismiss()
         }
-
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             parent.dismiss()
         }
@@ -408,16 +571,13 @@ struct FotoAnalisisView: View {
     var body: some View {
         ZStack {
             fondo.ignoresSafeArea()
-
             VStack(spacing: 0) {
-                // Header
                 HStack {
                     Text("FOTO")
                         .font(.system(size: 13, design: .monospaced))
                         .foregroundColor(cyan)
                         .tracking(3)
                     Spacer()
-                    // Botón galería
                     Button {
                         tecladoActivo = false
                         mostrarGaleria = true
@@ -427,7 +587,6 @@ struct FotoAnalisisView: View {
                             .font(.system(size: 18))
                     }
                     .padding(.trailing, 12)
-                    // Botón reset
                     Button {
                         tecladoActivo = false
                         vm.fotoSeleccionada = nil
@@ -445,13 +604,11 @@ struct FotoAnalisisView: View {
 
                 ScrollView {
                     VStack(spacing: 20) {
-
                         ZStack {
                             RoundedRectangle(cornerRadius: 12)
                                 .stroke(cyan.opacity(0.3), lineWidth: 1)
                                 .frame(height: 260)
                                 .background(Color(red: 0.02, green: 0.06, blue: 0.12).cornerRadius(12))
-
                             if let img = vm.fotoSeleccionada {
                                 Image(uiImage: img)
                                     .resizable()
@@ -475,7 +632,6 @@ struct FotoAnalisisView: View {
                             vm.mostrarCamara = true
                         }
 
-                        // Botones cámara y galería
                         HStack(spacing: 12) {
                             Button {
                                 tecladoActivo = false
@@ -492,14 +648,13 @@ struct FotoAnalisisView: View {
                                 .background(cyan)
                                 .cornerRadius(10)
                             }
-
                             Button {
                                 tecladoActivo = false
                                 mostrarGaleria = true
                             } label: {
                                 HStack(spacing: 8) {
                                     Image(systemName: "photo.on.rectangle")
-                                    Text("Galería")
+                                    Text("Galeria")
                                         .font(.system(size: 14, design: .monospaced))
                                 }
                                 .foregroundColor(cyan)
@@ -507,20 +662,16 @@ struct FotoAnalisisView: View {
                                 .padding(.horizontal, 20)
                                 .background(cyan.opacity(0.15))
                                 .cornerRadius(10)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .stroke(cyan.opacity(0.4), lineWidth: 1)
-                                )
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(cyan.opacity(0.4), lineWidth: 1))
                             }
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("¿QUÉ QUIERES SABER?")
+                            Text("QUE QUIERES SABER?")
                                 .font(.system(size: 10, design: .monospaced))
                                 .foregroundColor(cyan.opacity(0.5))
                                 .tracking(2)
-
-                            TextField("Ej: ¿Qué marca es esto? ¿Qué pone aquí?", text: $vm.pregunta, axis: .vertical)
+                            TextField("Ej: Que marca es esto? Que pone aqui?", text: $vm.pregunta, axis: .vertical)
                                 .font(.system(size: 14))
                                 .foregroundColor(.white)
                                 .padding(12)
@@ -561,7 +712,6 @@ struct FotoAnalisisView: View {
                                         .tracking(3)
                                     Spacer()
                                 }
-
                                 Text(vm.respuesta)
                                     .font(.system(size: 14))
                                     .foregroundColor(.white)
@@ -569,14 +719,10 @@ struct FotoAnalisisView: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .background(Color(red: 0.02, green: 0.08, blue: 0.15))
                                     .cornerRadius(10)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 10)
-                                            .stroke(cyan.opacity(0.2), lineWidth: 1)
-                                    )
+                                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(cyan.opacity(0.2), lineWidth: 1))
                             }
                             .padding(.horizontal, 16)
                         }
-
                         Spacer(minLength: 40)
                     }
                     .padding(.top, 20)
@@ -613,13 +759,11 @@ struct GaleriaView: UIViewControllerRepresentable {
     class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
         let parent: GaleriaView
         init(_ parent: GaleriaView) { self.parent = parent }
-
         func imagePickerController(_ picker: UIImagePickerController,
                                    didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
             parent.imagen = info[.originalImage] as? UIImage
             parent.dismiss()
         }
-
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             parent.dismiss()
         }
@@ -632,10 +776,12 @@ struct MainAppView: View {
     let wearables: WearablesInterface
     @ObservedObject private var viewModel: WearablesViewModel
     @StateObject private var locationManager = LocationManager()
+    @StateObject private var streamVM: StreamSessionViewModel
 
     init(wearables: WearablesInterface, viewModel: WearablesViewModel) {
         self.wearables = wearables
         self.viewModel = viewModel
+        self._streamVM = StateObject(wrappedValue: StreamSessionViewModel(wearables: wearables))
         UITabBar.appearance().barTintColor = UIColor(red: 0.01, green: 0.03, blue: 0.06, alpha: 1)
         UITabBar.appearance().unselectedItemTintColor = UIColor(red: 0.2, green: 0.5, blue: 0.7, alpha: 1)
     }
@@ -659,6 +805,12 @@ struct MainAppView: View {
                 .tabItem {
                     Image(systemName: "camera.fill")
                     Text("FOTO")
+                }
+
+            GafasView(viewModel: viewModel, streamVM: streamVM)
+                .tabItem {
+                    Image(systemName: "eyeglasses")
+                    Text("GAFAS")
                 }
 
             BidWebView(url: URL(string: "https://bidjuanmi.com?app_token=bid-app-token-juanmi")!)
