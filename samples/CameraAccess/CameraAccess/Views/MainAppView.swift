@@ -362,6 +362,7 @@ class FotoAnalisisViewModel: ObservableObject {
         }
         BidAudioPlayer.shared.play(data: data)
     } catch {}
+    }     
 }
 
 struct CamaraView: UIViewControllerRepresentable {
