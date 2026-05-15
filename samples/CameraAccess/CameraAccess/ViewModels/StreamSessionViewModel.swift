@@ -95,11 +95,19 @@ final class StreamSessionViewModel: ObservableObject {
     if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=authStatus-\(authStatus.rawValue)") {
         URLSession.shared.dataTask(with: url).resume()
     }
-    guard authStatus == .authorized else {
-        if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=camara-no-autorizada") {
+    if authStatus == .notDetermined {
+        let granted = await AVCaptureDevice.requestAccess(for: .video)
+        if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=permiso-solicitado-\(granted)") {
             URLSession.shared.dataTask(with: url).resume()
         }
-        return
+        guard granted else { return }
+    } else {
+        guard authStatus == .authorized else {
+            if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=camara-no-autorizada") {
+                URLSession.shared.dataTask(with: url).resume()
+            }
+            return
+        }
     }
     await startSession()
 }
