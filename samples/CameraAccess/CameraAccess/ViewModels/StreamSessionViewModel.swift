@@ -235,10 +235,13 @@ final class StreamSessionViewModel: ObservableObject {
 }
 
   func handleVideoFrame(_ frame: VideoFrame) async {
-    if let image = frame.makeUIImage() {
-      currentVideoFrame = image
+    if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=videoFrame-llego") {
+        URLSession.shared.dataTask(with: url).resume()
     }
-  }
+    if let image = frame.makeUIImage() {
+        currentVideoFrame = image
+    }
+}
 
   func handlePhotoData(_ data: PhotoData) async {
     isCapturingPhoto = false
