@@ -313,7 +313,6 @@ struct GafasView: View {
                 ScrollView {
                     VStack(spacing: 20) {
 
-                        // Estado conexión
                         HStack {
                             Circle()
                                 .fill(viewModel.registrationState == .registered ? cyan : Color.red)
@@ -327,7 +326,6 @@ struct GafasView: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 20)
 
-                        // Botón conectar/desconectar
                         if viewModel.registrationState != .registered {
                             Button {
                                 viewModel.connectGlasses()
@@ -364,13 +362,11 @@ struct GafasView: View {
                             }
                         }
 
-                        // Separador
                         Rectangle()
                             .fill(cyan.opacity(0.1))
                             .frame(height: 1)
                             .padding(.horizontal, 16)
 
-                        // Stream manual
                         VStack(spacing: 12) {
                             Text("CAMARA GAFAS")
                                 .font(.system(size: 10, design: .monospaced))
@@ -379,7 +375,6 @@ struct GafasView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 16)
 
-                            // Preview stream
                             ZStack {
                                 RoundedRectangle(cornerRadius: 12)
                                     .stroke(cyan.opacity(0.3), lineWidth: 1)
@@ -405,7 +400,6 @@ struct GafasView: View {
                             }
                             .padding(.horizontal, 16)
 
-                            // Botones stream
                             HStack(spacing: 12) {
                                 if streamVM.isStreaming {
                                     Button {
@@ -451,10 +445,10 @@ struct GafasView: View {
                                         .foregroundColor(fondo)
                                         .padding(.vertical, 12)
                                         .padding(.horizontal, 24)
-                                        .background(viewModel.registrationState == .registered ? cyan : cyan.opacity(0.3))
+                                        .background(streamVM.isDeviceSessionReady ? cyan : cyan.opacity(0.3))
                                         .cornerRadius(10)
                                     }
-                                    .disabled(viewModel.registrationState != .registered)
+                                    .disabled(!streamVM.isDeviceSessionReady)
                                 }
                             }
                         }
@@ -776,12 +770,10 @@ struct MainAppView: View {
     let wearables: WearablesInterface
     @ObservedObject private var viewModel: WearablesViewModel
     @StateObject private var locationManager = LocationManager()
-    @StateObject private var streamVM: StreamSessionViewModel
 
     init(wearables: WearablesInterface, viewModel: WearablesViewModel) {
         self.wearables = wearables
         self.viewModel = viewModel
-        self._streamVM = StateObject(wrappedValue: StreamSessionViewModel(wearables: wearables))
         UITabBar.appearance().barTintColor = UIColor(red: 0.01, green: 0.03, blue: 0.06, alpha: 1)
         UITabBar.appearance().unselectedItemTintColor = UIColor(red: 0.2, green: 0.5, blue: 0.7, alpha: 1)
     }
@@ -789,10 +781,7 @@ struct MainAppView: View {
     var body: some View {
         TabView {
             BidStatusView(viewModel: viewModel)
-    .onAppear {
-        viewModel.setStreamVM(streamVM)
-        viewModel.arrancarEscucha()
-    }
+                .onAppear { viewModel.arrancarEscucha() }
                 .tabItem {
                     Image(systemName: "waveform")
                     Text("BID")
@@ -810,11 +799,19 @@ struct MainAppView: View {
                     Text("FOTO")
                 }
 
-            GafasView(viewModel: viewModel, streamVM: streamVM)
-                .tabItem {
-                    Image(systemName: "eyeglasses")
-                    Text("GAFAS")
-                }
+            if let svm = viewModel.streamVM {
+                GafasView(viewModel: viewModel, streamVM: svm)
+                    .tabItem {
+                        Image(systemName: "eyeglasses")
+                        Text("GAFAS")
+                    }
+            } else {
+                GafasView(viewModel: viewModel, streamVM: StreamSessionViewModel(wearables: wearables))
+                    .tabItem {
+                        Image(systemName: "eyeglasses")
+                        Text("GAFAS")
+                    }
+            }
 
             BidWebView(url: URL(string: "https://bidjuanmi.com?app_token=bid-app-token-juanmi")!)
                 .ignoresSafeArea()
