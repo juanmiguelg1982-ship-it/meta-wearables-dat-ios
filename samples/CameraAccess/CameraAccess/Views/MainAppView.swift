@@ -560,7 +560,11 @@ struct MainAppView: View {
                     Image(systemName: "bubble.left.and.bubble.right")
                     Text("CHAT")
                 }
-
+            FotoAnalisisView()
+                .tabItem {
+                    Image(systemName: "camera.fill")
+                    Text("FOTO")
+                }   
             BidWebView(url: URL(string: "https://bidjuanmi.com?app_token=bid-app-token-juanmi")!)
                 .ignoresSafeArea()
                 .tabItem {
