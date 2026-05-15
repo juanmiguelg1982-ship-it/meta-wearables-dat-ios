@@ -143,10 +143,14 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
           DispatchQueue.main.async { self.wakeWordDetectado() }
         }
       }
-      if error != nil {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciarEscuchaBID() }
-      }
+     if error != nil {
+    // Solo reintentar si no estamos ya en bucle
+    guard !self.faseEscucha, !self.enConversacion else { return }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+        guard !self.enConversacion, !self.grabandoRespuesta else { return }
+        self.iniciarEscuchaBID()
     }
+}
 
     arrancarEngine()
     onEstado("Escuchando... di OYE")
