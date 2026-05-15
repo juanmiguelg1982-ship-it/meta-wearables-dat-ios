@@ -153,13 +153,16 @@ final class StreamSessionViewModel: ObservableObject {
     if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=startSession-inicio") {
         URLSession.shared.dataTask(with: url).resume()
     }
+    if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=hasActiveDevice-\(hasActiveDevice)-isReady-\(isDeviceSessionReady)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "") {
+        URLSession.shared.dataTask(with: url).resume()
+    }
     guard let deviceSession = await sessionManager.getSession() else {
         if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=getSession-fallo") {
             URLSession.shared.dataTask(with: url).resume()
         }
         return
     }
-    if let logUrl = URL(string: "https://bidjuanmi.com/bid-log?msg=deviceState-\(deviceSession.state)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "") {
+    if let logUrl = URL(string: ("https://bidjuanmi.com/bid-log?msg=deviceState-\(deviceSession.state)").addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "") {
         URLSession.shared.dataTask(with: logUrl).resume()
     }
     guard deviceSession.state == .started else { return }
