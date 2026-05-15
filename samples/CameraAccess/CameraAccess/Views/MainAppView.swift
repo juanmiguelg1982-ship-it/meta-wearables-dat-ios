@@ -2,6 +2,7 @@ import CoreLocation
 import MWDATCore
 import SwiftUI
 import WebKit
+import AVFoundation
 
 // MARK: - Geolocalización
 
