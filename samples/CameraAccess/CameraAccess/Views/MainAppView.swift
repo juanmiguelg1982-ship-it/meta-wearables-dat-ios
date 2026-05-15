@@ -403,20 +403,20 @@ struct GafasView: View {
                             HStack(spacing: 12) {
                                 if streamVM.isStreaming {
                                     Button {
-                                        Task { await streamVM.stopSession() }
-                                    } label: {
-                                        HStack(spacing: 8) {
-                                            Image(systemName: "stop.fill")
-                                            Text("PARAR")
-                                                .font(.system(size: 13, design: .monospaced))
-                                        }
-                                        .foregroundColor(Color.red)
-                                        .padding(.vertical, 12)
-                                        .padding(.horizontal, 24)
-                                        .background(Color.red.opacity(0.15))
-                                        .cornerRadius(10)
-                                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.red.opacity(0.4), lineWidth: 1))
-                                    }
+    Task { await streamVM.handleStartStreaming() }
+} label: {
+    HStack(spacing: 8) {
+        Image(systemName: "video.fill")
+        Text("VER DESDE GAFAS")
+            .font(.system(size: 13, design: .monospaced))
+    }
+    .foregroundColor(fondo)
+    .padding(.vertical, 12)
+    .padding(.horizontal, 24)
+    .background(viewModel.registrationState == .registered ? cyan : cyan.opacity(0.3))
+    .cornerRadius(10)
+}
+.disabled(viewModel.registrationState != .registered)
 
                                     Button {
                                         streamVM.capturePhoto()
@@ -779,48 +779,40 @@ struct MainAppView: View {
     }
 
     var body: some View {
-        TabView {
-            BidStatusView(viewModel: viewModel)
-                .onAppear { viewModel.arrancarEscucha() }
-                .tabItem {
-                    Image(systemName: "waveform")
-                    Text("BID")
-                }
-
-            ChatView()
-                .tabItem {
-                    Image(systemName: "bubble.left.and.bubble.right")
-                    Text("CHAT")
-                }
-
-            FotoAnalisisView()
-                .tabItem {
-                    Image(systemName: "camera.fill")
-                    Text("FOTO")
-                }
-
-            if let svm = viewModel.streamVM {
-                GafasView(viewModel: viewModel, streamVM: svm)
-                    .tabItem {
-                        Image(systemName: "eyeglasses")
-                        Text("GAFAS")
-                    }
-            } else {
-                GafasView(viewModel: viewModel, streamVM: StreamSessionViewModel(wearables: wearables))
-                    .tabItem {
-                        Image(systemName: "eyeglasses")
-                        Text("GAFAS")
-                    }
+    TabView {
+        BidStatusView(viewModel: viewModel)
+            .onAppear { viewModel.arrancarEscucha() }
+            .tabItem {
+                Image(systemName: "waveform")
+                Text("BID")
             }
 
-            BidWebView(url: URL(string: "https://bidjuanmi.com?app_token=bid-app-token-juanmi")!)
-                .ignoresSafeArea()
-                .tabItem {
-                    Image(systemName: "square.grid.2x2")
-                    Text("PANEL")
-                }
-        }
-        .accentColor(Color(red: 0, green: 0.71, blue: 0.85))
-        .environmentObject(locationManager)
+        ChatView()
+            .tabItem {
+                Image(systemName: "bubble.left.and.bubble.right")
+                Text("CHAT")
+            }
+
+        FotoAnalisisView()
+            .tabItem {
+                Image(systemName: "camera.fill")
+                Text("FOTO")
+            }
+
+        GafasView(viewModel: viewModel, streamVM: viewModel.streamVM ?? StreamSessionViewModel(wearables: wearables))
+            .tabItem {
+                Image(systemName: "eyeglasses")
+                Text("GAFAS")
+            }
+
+        BidWebView(url: URL(string: "https://bidjuanmi.com?app_token=bid-app-token-juanmi")!)
+            .ignoresSafeArea()
+            .tabItem {
+                Image(systemName: "square.grid.2x2")
+                Text("PANEL")
+            }
     }
+    .accentColor(Color(red: 0, green: 0.71, blue: 0.85))
+    .environmentObject(locationManager)
+}
 }
