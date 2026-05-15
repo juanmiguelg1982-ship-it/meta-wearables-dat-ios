@@ -401,7 +401,7 @@ struct GafasView: View {
                             .padding(.horizontal, 16)
 
                             HStack(spacing: 12) {
-                                if streamVM.isStreaming {
+                                if streamVM.streamingStatus != .stopped {
                                     Button {
     Task { await streamVM.handleStartStreaming() }
 } label: {
