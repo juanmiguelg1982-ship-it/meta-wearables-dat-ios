@@ -71,15 +71,12 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
   }
 
-  func pausar() {
-    // No pausar el engine — mantenerlo activo para background
-  }
+  func pausar() {}
 
   @objc private func manejarInterrupcionAudio(_ notification: Notification) {
     guard let info = notification.userInfo,
           let tipoValor = info[AVAudioSessionInterruptionTypeKey] as? UInt,
           let tipo = AVAudioSession.InterruptionType(rawValue: tipoValor) else { return }
-
     if tipo == .ended {
       DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
         if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
@@ -114,11 +111,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   }
 
   private func iniciarEscuchaBID() {
-    let logMsg = "iniciarEscuchaBID engine:\(audioEngine.isRunning) conv:\(enConversacion) grab:\(grabandoRespuesta)"
-    if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=\(logMsg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? \"\")") {
-      URLSession.shared.dataTask(with: url).resume()
-    }
-
     enConversacion = false
     faseEscucha = false
     conversacionTimer?.invalidate()
@@ -134,7 +126,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
     guard let req = recognitionRequest else { return }
     req.shouldReportPartialResults = true
-
     ultimoResultado = Date()
 
     recognitionTask = speechRecognizer?.recognitionTask(with: req) { [weak self] result, error in
@@ -200,15 +191,12 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
       if let result = result {
         let texto = result.bestTranscription.formattedString
         let textoLower = texto.lowercased()
-
         if self.palabrasTerminar.contains(where: { textoLower == $0 || textoLower.hasSuffix(" \($0)") }) {
           DispatchQueue.main.async { self.terminarConversacion() }
           return
         }
-
         self.ultimoTexto = texto
         DispatchQueue.main.async { self.onEstado("🎤 \(texto)") }
-
         if texto != self.textoAnterior {
           self.textoAnterior = texto
           self.envioTimer?.invalidate()
@@ -216,7 +204,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
             self?.pararYEnviar()
           }
         }
-
         if result.isFinal {
           DispatchQueue.main.async { self.pararYEnviar() }
         }
@@ -247,7 +234,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     faseEscucha = false
     pararEngine()
     AudioServicesPlaySystemSound(1057)
-    onEstado("Conversación terminada")
+    onEstado("Conversacion terminada")
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
       self.iniciarEscuchaBID()
     }
@@ -258,9 +245,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     envioTimer?.invalidate()
     pararEngine()
     grabandoRespuesta = false
-
     let transcripcion = ultimoTexto.trimmingCharacters(in: .whitespacesAndNewlines)
-
     guard !transcripcion.isEmpty else {
       onEstado("No te he escuchado")
       DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
@@ -272,12 +257,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
       }
       return
     }
-
     onEstado("Procesando...")
-
-    Task {
-      await onPregunta(transcripcion)
-    }
+    Task { await onPregunta(transcripcion) }
   }
 
   private func pararEngine() {
@@ -296,11 +277,9 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     let inputNode = audioEngine.inputNode
     let formato = inputNode.outputFormat(forBus: 0)
     guard formato.sampleRate > 0 else { return }
-
     inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
       self?.recognitionRequest?.append(buffer)
     }
-
     if !audioEngine.isRunning {
       do {
         try audioEngine.start()
@@ -332,9 +311,7 @@ class WearablesViewModel: ObservableObject {
     self.wearables = wearables
     self.devices = wearables.devices
     self.registrationState = wearables.registrationState
-
     setupDeviceStreamTask = Task { await setupDeviceStream() }
-
     registrationTask = Task {
       for await registrationState in wearables.registrationStateStream() {
         let previousState = self.registrationState
@@ -344,7 +321,6 @@ class WearablesViewModel: ObservableObject {
         }
       }
     }
-
     Task {
       bidStatus = "Conectando..."
       guard let url = URL(string: "https://bidjuanmi.com/chat-stream?message=AppArranc%C3%B3") else {
@@ -388,7 +364,7 @@ class WearablesViewModel: ObservableObject {
         UIApplication.shared.endBackgroundTask(bgTask)
       }
       await MainActor.run {
-        self.bidStatus = "Tú: \(texto)"
+        self.bidStatus = "Tu: \(texto)"
         BidEscuchaManager.instancia?.pausarConversacionTimer()
       }
       let vm = self.streamVM ?? StreamSessionViewModel(wearables: self.wearables)
@@ -396,7 +372,6 @@ class WearablesViewModel: ObservableObject {
       if vm.respuestaParaFoto {
         await vm.handleStartStreaming()
       }
-
       await withCheckedContinuation { continuation in
         var observador: NSObjectProtocol?
         var resumido = false
@@ -423,7 +398,6 @@ class WearablesViewModel: ObservableObject {
           continuation.resume()
         }
       }
-
       await MainActor.run {
         self.bidStatus = "Escuchando..."
         BidEscuchaManager.instancia?.reiniciarTimerConversacion()
@@ -431,7 +405,6 @@ class WearablesViewModel: ObservableObject {
       }
     }
 
-    // Long polling — mensajes de voz pendientes del servidor
     Task {
       while true {
         try? await Task.sleep(nanoseconds: 5_000_000_000)
@@ -441,7 +414,6 @@ class WearablesViewModel: ObservableObject {
 
     bidEscucha?.arrancar()
 
-    // Al arrancar, leer mensajes pendientes tras 3 segundos
     Task {
       try? await Task.sleep(nanoseconds: 3_000_000_000)
       await comprobarVozPendiente()
