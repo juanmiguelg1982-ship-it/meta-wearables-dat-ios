@@ -365,8 +365,11 @@ class WearablesViewModel: ObservableObject {
       bgTaskPermanente = UIApplication.shared.beginBackgroundTask { }
     }
     if streamVM == nil {
-      streamVM = StreamSessionViewModel(wearables: wearables)
+    streamVM = StreamSessionViewModel(wearables: wearables)
+    if let url = URL(string: "https://bidjuanmi.com/bid-log?msg=streamVM-creado") {
+        URLSession.shared.dataTask(with: url).resume()
     }
+}
     guard bidEscucha == nil else { return }
     bidEscucha = BidEscuchaManager { [weak self] estado in
       Task { @MainActor in self?.bidStatus = estado }
