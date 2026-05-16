@@ -18,7 +18,8 @@ final class BidAudioPlayer: NSObject, @unchecked Sendable {
   private override init() {
     super.init()
   }
-func stop() {
+
+  func stop() {
     player?.stop()
     player = nil
     BidEscuchaManager.reanudarEngine()
@@ -29,39 +30,35 @@ func stop() {
   func play(data: Data) {
     BidEscuchaManager.instancia?.pausarConversacionTimer()
     BidEscuchaManager.pausarEngine()
-  func play(data: Data) {
-    BidEscuchaManager.instancia?.pausarConversacionTimer()
-    BidEscuchaManager.pausarEngine()
     try? AVAudioSession.sharedInstance().setActive(true)
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
-            appDelegate.silencioPlayer?.play()
-        }
-        do {
-            self.player = try AVAudioPlayer(data: data)
-            self.player?.delegate = self
-            self.player?.prepareToPlay()
-            self.player?.play()
-        } catch {
-            BidEscuchaManager.reanudarEngine()
-        }
+      if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+        appDelegate.silencioPlayer?.play()
+      }
+      do {
+        self.player = try AVAudioPlayer(data: data)
+        self.player?.delegate = self
+        self.player?.prepareToPlay()
+        self.player?.play()
+      } catch {
+        BidEscuchaManager.reanudarEngine()
+      }
     }
-}
+  }
 }
 
 extension BidAudioPlayer: AVAudioPlayerDelegate {
   func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
     if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
-        appDelegate.silencioPlayer?.play()
+      appDelegate.silencioPlayer?.play()
     }
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-        NotificationCenter.default.post(name: NSNotification.Name("BIDAudioTerminado"), object: nil)
-        BidEscuchaManager.reanudarEngine()
-        BidEscuchaManager.instancia?.reiniciarTimerConversacion()
+      NotificationCenter.default.post(name: NSNotification.Name("BIDAudioTerminado"), object: nil)
+      BidEscuchaManager.reanudarEngine()
+      BidEscuchaManager.instancia?.reiniciarTimerConversacion()
     }
+  }
 }
-}
-
 @MainActor
 final class StreamSessionViewModel: ObservableObject {
   @Published var currentVideoFrame: UIImage?
