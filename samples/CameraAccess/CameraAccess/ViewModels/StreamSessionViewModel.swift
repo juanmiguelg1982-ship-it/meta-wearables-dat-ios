@@ -18,7 +18,17 @@ final class BidAudioPlayer: NSObject, @unchecked Sendable {
   private override init() {
     super.init()
   }
+func stop() {
+    player?.stop()
+    player = nil
+    BidEscuchaManager.reanudarEngine()
+    BidEscuchaManager.instancia?.reiniciarTimerConversacion()
+    NotificationCenter.default.post(name: NSNotification.Name("BIDAudioTerminado"), object: nil)
+  }
 
+  func play(data: Data) {
+    BidEscuchaManager.instancia?.pausarConversacionTimer()
+    BidEscuchaManager.pausarEngine()
   func play(data: Data) {
     BidEscuchaManager.instancia?.pausarConversacionTimer()
     BidEscuchaManager.pausarEngine()
