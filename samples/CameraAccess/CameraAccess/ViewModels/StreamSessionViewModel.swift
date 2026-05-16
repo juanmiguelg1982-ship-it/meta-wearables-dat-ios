@@ -24,19 +24,19 @@ final class BidAudioPlayer: NSObject, @unchecked Sendable {
     BidEscuchaManager.pausarEngine()
     try? AVAudioSession.sharedInstance().setActive(true)
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-      if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
-        appDelegate.silencioPlayer?.play()
-      }
-      do {
-        self.player = try AVAudioPlayer(data: data)
-        self.player?.delegate = self
-        self.player?.prepareToPlay()
-        self.player?.play()
-      } catch {
-        BidEscuchaManager.reanudarEngine()
-      }
+        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+            appDelegate.silencioPlayer?.play()
+        }
+        do {
+            self.player = try AVAudioPlayer(data: data)
+            self.player?.delegate = self
+            self.player?.prepareToPlay()
+            self.player?.play()
+        } catch {
+            BidEscuchaManager.reanudarEngine()
+        }
     }
-  }
+}
 }
 
 extension BidAudioPlayer: AVAudioPlayerDelegate {
@@ -47,6 +47,7 @@ extension BidAudioPlayer: AVAudioPlayerDelegate {
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
         NotificationCenter.default.post(name: NSNotification.Name("BIDAudioTerminado"), object: nil)
         BidEscuchaManager.reanudarEngine()
+        BidEscuchaManager.instancia?.reiniciarTimerConversacion()
     }
 }
 }
