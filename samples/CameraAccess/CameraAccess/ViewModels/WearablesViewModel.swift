@@ -22,6 +22,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private var enConversacion = false
   private var ultimoResultado: Date = Date()
   private var vigilanteTask: Task<Void, Never>?
+  private var escuchandoOk = false
 
   static var instancia: BidEscuchaManager?
   static func pausarEngine() { instancia?.pausar() }
