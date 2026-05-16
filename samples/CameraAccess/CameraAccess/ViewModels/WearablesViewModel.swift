@@ -272,6 +272,8 @@ class WearablesViewModel: ObservableObject {
   private var compatibilityListenerTokens: [DeviceIdentifier: AnyListenerToken] = [:]
   private var bidEscucha: BidEscuchaManager?
   var streamVM: StreamSessionViewModel
+  var ultimaLat: Double = 0
+  var ultimaLon: Double = 0
 
   init(wearables: WearablesInterface) {
     self.wearables = wearables
@@ -335,7 +337,7 @@ class WearablesViewModel: ObservableObject {
         BidEscuchaManager.instancia?.pausarConversacionTimer()
       }
       let vm = self.streamVM ?? StreamSessionViewModel(wearables: self.wearables)
-      await vm.enviarMensajeABid(mensaje: texto)
+      await vm.enviarMensajeABid(mensaje: texto, lat: self.ultimaLat, lon: self.ultimaLon)
       if vm.respuestaParaFoto {
         await vm.handleStartStreaming()
       }
