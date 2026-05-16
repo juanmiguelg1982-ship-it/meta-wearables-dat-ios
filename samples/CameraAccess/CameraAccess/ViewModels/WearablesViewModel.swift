@@ -57,7 +57,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
   }
 
-  private var escuchandoOk = false
+ 
 
 func pausar() {
     guard !escuchandoOk else { return }
