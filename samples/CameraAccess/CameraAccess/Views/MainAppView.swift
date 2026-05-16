@@ -946,11 +946,15 @@ struct MainAppView: View {
     var body: some View {
     TabView {
         BidStatusView(viewModel: viewModel)
-            .onAppear { viewModel.arrancarEscucha() }
-            .tabItem {
-                Image(systemName: "waveform")
-                Text("BID")
-            }
+    .onAppear { viewModel.arrancarEscucha() }
+    .onChange(of: locationManager.lat) { lat in
+        viewModel.ultimaLat = lat
+        viewModel.ultimaLon = locationManager.lon
+    }
+    .tabItem {
+        Image(systemName: "waveform")
+        Text("BID")
+    }
 
         ChatView()
             .tabItem {
