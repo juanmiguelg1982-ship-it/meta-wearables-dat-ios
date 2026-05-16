@@ -362,10 +362,9 @@ class WearablesViewModel: ObservableObject {
         }
       }
       await MainActor.run {
-        self.bidStatus = "Escuchando..."
-        BidEscuchaManager.instancia?.reiniciarTimerConversacion()
-        BidEscuchaManager.instancia?.reanudar()
-      }
+    self.bidStatus = "Escuchando..."
+    BidEscuchaManager.instancia?.reanudar()
+}
     }
 
     Task {
