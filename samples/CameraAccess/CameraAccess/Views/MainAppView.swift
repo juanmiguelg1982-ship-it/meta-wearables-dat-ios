@@ -471,7 +471,33 @@ class FotoAnalisisViewModel: ObservableObject {
     @Published var cargando: Bool = false
     @Published var mostrarCamara: Bool = false
     var locationManager: LocationManager?
-
+    func subirFotoBid() async {
+    guard let imagen = fotoSeleccionada,
+          let jpegData = imagen.jpegData(compressionQuality: 0.7) else { return }
+    let base64 = jpegData.base64EncodedString()
+    await MainActor.run { cargando = true }
+    guard let url = URL(string: "https://bidjuanmi.com/analizar-imagen") else { return }
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    let body: [String: Any] = [
+        "imagen": base64,
+        "pregunta": "Juanmi te acaba de subir una foto. Confirmale brevemente que la tienes y que puede preguntarte lo que quiera sobre ella.",
+        "lat": locationManager?.lat ?? 0,
+        "lon": locationManager?.lon ?? 0
+    ]
+    request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+    do {
+        let (data, _) = try await URLSession.shared.data(for: request)
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let desc = json["descripcion"] as? String {
+            await MainActor.run { cargando = false }
+            await reproducirAudio(texto: desc)
+        }
+    } catch {
+        await MainActor.run { cargando = false }
+    }
+}
     func analizarFoto() async {
         guard let imagen = fotoSeleccionada,
               let jpegData = imagen.jpegData(compressionQuality: 0.7) else { return }
@@ -696,6 +722,27 @@ struct FotoAnalisisView: View {
                             .cornerRadius(10)
                         }
                         .disabled(vm.fotoSeleccionada == nil || vm.cargando)
+                        Button {
+    tecladoActivo = false
+    Task { await vm.subirFotoBid() }
+} label: {
+    HStack(spacing: 10) {
+        if vm.cargando {
+            ProgressView().tint(fondo)
+        } else {
+            Image(systemName: "arrow.up.circle")
+        }
+        Text("SUBIR A BID")
+            .font(.system(size: 14, design: .monospaced))
+    }
+    .foregroundColor(cyan)
+    .padding(.vertical, 12)
+    .padding(.horizontal, 32)
+    .background(vm.fotoSeleccionada == nil ? cyan.opacity(0.1) : cyan.opacity(0.15))
+    .cornerRadius(10)
+    .overlay(RoundedRectangle(cornerRadius: 10).stroke(vm.fotoSeleccionada == nil ? cyan.opacity(0.1) : cyan.opacity(0.4), lineWidth: 1))
+}
+.disabled(vm.fotoSeleccionada == nil || vm.cargando)
 
                         if !vm.respuesta.isEmpty {
                             VStack(alignment: .leading, spacing: 8) {
