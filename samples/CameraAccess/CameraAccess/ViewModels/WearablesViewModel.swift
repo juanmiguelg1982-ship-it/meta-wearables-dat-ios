@@ -382,7 +382,7 @@ class WearablesViewModel: ObservableObject {
           if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
           continuation.resume()
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 300.0) {
           guard !resumido else { return }
           resumido = true
           if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
