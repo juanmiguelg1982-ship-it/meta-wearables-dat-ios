@@ -57,9 +57,36 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
   }
 
-  func pausar() {}
+  private var escuchandoOk = false
 
-  @objc private func manejarInterrupcionAudio(_ notification: Notification) {
+func pausar() {
+    guard !escuchandoOk else { return }
+    escuchandoOk = true
+    pararEngine()
+
+    recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+    guard let req = recognitionRequest else { return }
+    req.shouldReportPartialResults = true
+
+    recognitionTask = speechRecognizer?.recognitionTask(with: req) { [weak self] result, error in
+        guard let self = self else { return }
+        if let result = result {
+            let texto = result.bestTranscription.formattedString.lowercased()
+            if texto.contains("ok") {
+                DispatchQueue.main.async {
+                    self.escuchandoOk = false
+                    BidAudioPlayer.shared.stop()
+                }
+            }
+        }
+        if error != nil {
+            self.escuchandoOk = false
+        }
+    }
+    arrancarEngine()
+}
+
+@objc private func manejarInterrupcionAudio(_ notification: Notification) {
     guard let info = notification.userInfo,
           let tipoValor = info[AVAudioSessionInterruptionTypeKey] as? UInt,
           let tipo = AVAudioSession.InterruptionType(rawValue: tipoValor) else { return }
