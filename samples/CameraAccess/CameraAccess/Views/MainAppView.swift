@@ -1189,66 +1189,111 @@ struct PantallaView: View {
 }
 // MARK: - Main App View
 
+// MARK: - Main App View
+
+// MARK: - Main App View
+
 struct MainAppView: View {
     let wearables: WearablesInterface
     @ObservedObject private var viewModel: WearablesViewModel
     @StateObject private var locationManager = LocationManager()
+    @State private var pestañaActiva: String = "BID"
+
+    let pestañas: [(id: String, icono: String, label: String)] = [
+        ("BID",      "waveform",                    "BID"),
+        ("CHAT",     "bubble.left.and.bubble.right", "CHAT"),
+        ("FOTO",     "camera.fill",                  "FOTO"),
+        ("DOCS",     "doc.fill",                     "DOCS"),
+        ("PANTALLA", "rectangle.on.rectangle",       "PANTALLA"),
+        ("GAFAS",    "eyeglasses",                   "GAFAS"),
+        ("PANEL",    "square.grid.2x2",              "PANEL")
+    ]
+
+    let cyan = Color(red: 0, green: 0.71, blue: 0.85)
+    let fondo = Color(red: 0.01, green: 0.03, blue: 0.06)
 
     init(wearables: WearablesInterface, viewModel: WearablesViewModel) {
         self.wearables = wearables
         self.viewModel = viewModel
-        UITabBar.appearance().barTintColor = UIColor(red: 0.01, green: 0.03, blue: 0.06, alpha: 1)
-        UITabBar.appearance().unselectedItemTintColor = UIColor(red: 0.2, green: 0.5, blue: 0.7, alpha: 1)
     }
 
     var body: some View {
-    TabView {
-        BidStatusView(viewModel: viewModel)
-    .onAppear { viewModel.arrancarEscucha() }
-    .onChange(of: locationManager.lat) { lat in
-        viewModel.ultimaLat = lat
-        viewModel.ultimaLon = locationManager.lon
-    }
-    .tabItem {
-        Image(systemName: "waveform")
-        Text("BID")
-    }
+        ZStack(alignment: .bottom) {
+            fondo.ignoresSafeArea()
 
-        ChatView()
-            .tabItem {
-                Image(systemName: "bubble.left.and.bubble.right")
-                Text("CHAT")
+            // Contenido
+            Group {
+                switch pestañaActiva {
+                case "BID":
+                    BidStatusView(viewModel: viewModel)
+                        .onAppear { viewModel.arrancarEscucha() }
+                        .onChange(of: locationManager.lat) { lat in
+                            viewModel.ultimaLat = lat
+                            viewModel.ultimaLon = locationManager.lon
+                        }
+                case "CHAT":
+                    ChatView()
+                case "FOTO":
+                    FotoAnalisisView()
+                case "DOCS":
+                    DocumentosView()
+                case "PANTALLA":
+                    PantallaView()
+                case "GAFAS":
+                    GafasView(viewModel: viewModel, streamVM: viewModel.streamVM)
+                case "PANEL":
+                    BidWebView(url: URL(string: "https://bidjuanmi.com?app_token=bid-app-token-juanmi")!)
+                        .ignoresSafeArea()
+                default:
+                    BidStatusView(viewModel: viewModel)
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.bottom, 60)
 
-        FotoAnalisisView()
-            .tabItem {
-                Image(systemName: "camera.fill")
-                Text("FOTO")
+            // Barra inferior custom
+            VStack(spacing: 0) {
+                Rectangle()
+                    .fill(cyan.opacity(0.15))
+                    .frame(height: 1)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 0) {
+                        ForEach(pestañas, id: \.id) { tab in
+                            Button {
+                                pestañaActiva = tab.id
+                            } label: {
+                                VStack(spacing: 4) {
+                                    Image(systemName: tab.icono)
+                                        .font(.system(size: 18))
+                                        .foregroundColor(pestañaActiva == tab.id ? cyan : cyan.opacity(0.35))
+                                    Text(tab.label)
+                                        .font(.system(size: 9, design: .monospaced))
+                                        .foregroundColor(pestañaActiva == tab.id ? cyan : cyan.opacity(0.35))
+                                        .tracking(1)
+                                }
+                                .frame(width: 70)
+                                .padding(.vertical, 8)
+                                .background(
+                                    pestañaActiva == tab.id
+                                        ? cyan.opacity(0.08)
+                                        : Color.clear
+                                )
+                                .overlay(
+                                    Rectangle()
+                                        .fill(pestañaActiva == tab.id ? cyan : Color.clear)
+                                        .frame(height: 2),
+                                    alignment: .top
+                                )
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                }
+                .frame(height: 56)
+                .background(Color(red: 0.01, green: 0.04, blue: 0.08))
             }
-        DocumentosView()
-    .tabItem {
-        Image(systemName: "doc.fill")
-        Text("DOCS")
+        }
+        .environmentObject(locationManager)
+        .ignoresSafeArea(.keyboard)
     }
-PantallaView()
-    .tabItem {
-        Image(systemName: "rectangle.on.rectangle")
-        Text("PANTALLA")
-    }
-        GafasView(viewModel: viewModel, streamVM: viewModel.streamVM)
-    .tabItem {
-        Image(systemName: "eyeglasses")
-        Text("GAFAS")
-    }
-
-        BidWebView(url: URL(string: "https://bidjuanmi.com?app_token=bid-app-token-juanmi")!)
-            .ignoresSafeArea()
-            .tabItem {
-                Image(systemName: "square.grid.2x2")
-                Text("PANEL")
-            }
-    }
-    .accentColor(Color(red: 0, green: 0.71, blue: 0.85))
-    .environmentObject(locationManager)
-}
 }
