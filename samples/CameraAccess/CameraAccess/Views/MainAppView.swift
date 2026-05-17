@@ -3,6 +3,7 @@ import CoreLocation
 import MWDATCore
 import SwiftUI
 import WebKit
+import UniformTypeIdentifiers
 
 // MARK: - Geolocalización
 
@@ -1224,6 +1225,11 @@ struct MainAppView: View {
                 Image(systemName: "camera.fill")
                 Text("FOTO")
             }
+        DocumentosView()
+    .tabItem {
+        Image(systemName: "doc.fill")
+        Text("DOCS")
+    }
 PantallaView()
     .tabItem {
         Image(systemName: "rectangle.on.rectangle")
