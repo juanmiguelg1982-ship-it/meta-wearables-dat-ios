@@ -834,35 +834,47 @@ class DocumentosViewModel: ObservableObject {
     var locationManager: LocationManager?
 
     func subirDocumento() async {
-        guard let url = archivoSeleccionado else { return }
-        await MainActor.run { cargando = true }
-        do {
-            _ = url.startAccessingSecurityScopedResource()
-            let data = try Data(contentsOf: url)
-            url.stopAccessingSecurityScopedResource()
-            let boundary = UUID().uuidString
-            var body = Data()
-            body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"archivo\"; filename=\"\(nombreArchivo)\"\r\n".data(using: .utf8)!)
-            body.append("Content-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
-            body.append(data)
-            body.append("\r\n".data(using: .utf8)!)
-            let preguntaFinal = pregunta.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                ? "Juanmi te acaba de subir un documento. Confirmale brevemente que lo tienes y preguntale que quiere saber sobre el."
-                : pregunta
-            body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"pregunta\"\r\n\r\n".data(using: .utf8)!)
-            body.append(preguntaFinal.data(using: .utf8)!)
-            body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
-            guard let requestUrl = URL(string: "https://bidjuanmi.com/analizar-documento") else { return }
-            var request = URLRequest(url: requestUrl)
-            request.httpMethod = "POST"
-            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-            request.setValue("Bearer bid-app-token-juanmi", forHTTPHeaderField: "Authorization")
-            request.httpBody = body
-            let (responseData, _) = try await URLSession.shared.data(for: request)
-            if let json = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
-               let preguntaRespuesta = json["pregunta"] as? String {
+    guard let url = archivoSeleccionado else { return }
+    await MainActor.run { cargando = true }
+    do {
+        _ = url.startAccessingSecurityScopedResource()
+        let data = try Data(contentsOf: url)
+        url.stopAccessingSecurityScopedResource()
+        let boundary = UUID().uuidString
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"archivo\"; filename=\"\(nombreArchivo)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
+        body.append(data)
+        body.append("\r\n".data(using: .utf8)!)
+        let preguntaFinal = pregunta.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Juanmi te acaba de subir un documento. Confirmale brevemente que lo tienes y preguntale que quiere saber sobre el."
+            : pregunta
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"pregunta\"\r\n\r\n".data(using: .utf8)!)
+        body.append(preguntaFinal.data(using: .utf8)!)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        guard let requestUrl = URL(string: "https://bidjuanmi.com/analizar-documento") else { return }
+        var request = URLRequest(url: requestUrl)
+        request.httpMethod = "POST"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer bid-app-token-juanmi", forHTTPHeaderField: "Authorization")
+        request.httpBody = body
+        let (responseData, _) = try await URLSession.shared.data(for: request)
+        if let json = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any] {
+            // Error de formato
+            if let error = json["error"] as? String {
+                await MainActor.run { cargando = false }
+                guard var ttsComponents = URLComponents(string: "https://bidjuanmi.com/tts") else { return }
+                ttsComponents.queryItems = [URLQueryItem(name: "text", value: "No puedo leer ese archivo. \(error)")]
+                if let audioUrl = ttsComponents.url {
+                    let (audioData, _) = try await URLSession.shared.data(from: audioUrl)
+                    BidAudioPlayer.shared.play(data: audioData)
+                }
+                return
+            }
+            // Flujo normal
+            if let preguntaRespuesta = json["pregunta"] as? String {
                 await MainActor.run { cargando = false }
                 guard let ttsUrl = URL(string: "https://bidjuanmi.com/chat-stream?message=\(preguntaRespuesta.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")") else { return }
                 let (ttsData, _) = try await URLSession.shared.data(from: ttsUrl)
@@ -883,37 +895,38 @@ class DocumentosViewModel: ObservableObject {
                     if let audioUrl = ttsComponents.url {
                         let (audioData, _) = try await URLSession.shared.data(from: audioUrl)
                         BidAudioPlayer.shared.play(data: audioData)
-await withCheckedContinuation { continuation in
-    var observador: NSObjectProtocol?
-    var resumido = false
-    observador = NotificationCenter.default.addObserver(
-        forName: NSNotification.Name("BIDAudioTerminado"),
-        object: nil,
-        queue: .main
-    ) { _ in
-        guard !resumido else { return }
-        resumido = true
-        if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
-        continuation.resume()
-    }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) {
-        guard !resumido else { return }
-        resumido = true
-        if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
-        continuation.resume()
-    }
-}
-await MainActor.run {
-    BidEscuchaManager.instancia?.enConversacion = true
-    BidEscuchaManager.instancia?.reanudar()
-}
+                        await withCheckedContinuation { continuation in
+                            var observador: NSObjectProtocol?
+                            var resumido = false
+                            observador = NotificationCenter.default.addObserver(
+                                forName: NSNotification.Name("BIDAudioTerminado"),
+                                object: nil,
+                                queue: .main
+                            ) { _ in
+                                guard !resumido else { return }
+                                resumido = true
+                                if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
+                                continuation.resume()
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) {
+                                guard !resumido else { return }
+                                resumido = true
+                                if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
+                                continuation.resume()
+                            }
+                        }
+                        await MainActor.run {
+                            BidEscuchaManager.instancia?.enConversacion = true
+                            BidEscuchaManager.instancia?.reanudar()
+                        }
                     }
                 }
             }
-        } catch {
-            await MainActor.run { cargando = false }
         }
+    } catch {
+        await MainActor.run { cargando = false }
     }
+}
 }
 
 struct DocumentPickerView: UIViewControllerRepresentable {
