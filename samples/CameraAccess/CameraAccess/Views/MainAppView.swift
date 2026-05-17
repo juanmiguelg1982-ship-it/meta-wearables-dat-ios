@@ -480,9 +480,12 @@ class FotoAnalisisViewModel: ObservableObject {
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    let preguntaFinal = pregunta.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        ? "Juanmi te acaba de subir una foto. Confirmale brevemente que la tienes y preguntale que quiere saber sobre ella."
+        : pregunta
     let body: [String: Any] = [
         "imagen": base64,
-        "pregunta": "Juanmi te acaba de subir una foto. Confirmale brevemente que la tienes y que puede preguntarte lo que quiera sobre ella.",
+        "pregunta": preguntaFinal,
         "lat": locationManager?.lat ?? 0,
         "lon": locationManager?.lon ?? 0
     ]
@@ -493,6 +496,10 @@ class FotoAnalisisViewModel: ObservableObject {
            let desc = json["descripcion"] as? String {
             await MainActor.run { cargando = false }
             await reproducirAudio(texto: desc)
+            await MainActor.run {
+                BidEscuchaManager.instancia?.enConversacion = true
+                BidEscuchaManager.instancia?.reanudar()
+            }
         }
     } catch {
         await MainActor.run { cargando = false }
@@ -701,27 +708,7 @@ struct FotoAnalisisView: View {
                                 .lineLimit(3)
                         }
                         .padding(.horizontal, 16)
-
-                        Button {
-                            tecladoActivo = false
-                            Task { await vm.analizarFoto() }
-                        } label: {
-                            HStack(spacing: 10) {
-                                if vm.cargando {
-                                    ProgressView().tint(fondo)
-                                } else {
-                                    Image(systemName: "eye.fill")
-                                }
-                                Text(vm.cargando ? "Analizando..." : "Analizar")
-                                    .font(.system(size: 14, design: .monospaced))
-                            }
-                            .foregroundColor(fondo)
-                            .padding(.vertical, 12)
-                            .padding(.horizontal, 32)
-                            .background(vm.fotoSeleccionada == nil ? cyan.opacity(0.3) : cyan)
-                            .cornerRadius(10)
-                        }
-                        .disabled(vm.fotoSeleccionada == nil || vm.cargando)
+                        
                         Button {
     tecladoActivo = false
     Task { await vm.subirFotoBid() }
@@ -807,6 +794,229 @@ struct GaleriaView: UIViewControllerRepresentable {
         }
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             parent.dismiss()
+        }
+    }
+}
+// MARK: - Documentos View
+
+class DocumentosViewModel: ObservableObject {
+    @Published var archivoSeleccionado: URL? = nil
+    @Published var nombreArchivo: String = ""
+    @Published var pregunta: String = ""
+    @Published var cargando: Bool = false
+    @Published var mostrarPicker: Bool = false
+    var locationManager: LocationManager?
+
+    func subirDocumento() async {
+        guard let url = archivoSeleccionado else { return }
+        await MainActor.run { cargando = true }
+        do {
+            _ = url.startAccessingSecurityScopedResource()
+            let data = try Data(contentsOf: url)
+            url.stopAccessingSecurityScopedResource()
+            let boundary = UUID().uuidString
+            var body = Data()
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"archivo\"; filename=\"\(nombreArchivo)\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
+            body.append(data)
+            body.append("\r\n".data(using: .utf8)!)
+            let preguntaFinal = pregunta.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? "Juanmi te acaba de subir un documento. Confirmale brevemente que lo tienes y preguntale que quiere saber sobre el."
+                : pregunta
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"pregunta\"\r\n\r\n".data(using: .utf8)!)
+            body.append(preguntaFinal.data(using: .utf8)!)
+            body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+            guard let requestUrl = URL(string: "https://bidjuanmi.com/analizar-documento") else { return }
+            var request = URLRequest(url: requestUrl)
+            request.httpMethod = "POST"
+            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+            request.setValue("Bearer bid-app-token-juanmi", forHTTPHeaderField: "Authorization")
+            request.httpBody = body
+            let (responseData, _) = try await URLSession.shared.data(for: request)
+            if let json = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
+               let preguntaRespuesta = json["pregunta"] as? String {
+                await MainActor.run { cargando = false }
+                guard let ttsUrl = URL(string: "https://bidjuanmi.com/chat-stream?message=\(preguntaRespuesta.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")") else { return }
+                let (ttsData, _) = try await URLSession.shared.data(from: ttsUrl)
+                var respuestaCompleta = ""
+                if let texto = String(data: ttsData, encoding: .utf8) {
+                    for linea in texto.components(separatedBy: "\n") {
+                        if linea.hasPrefix("data: "),
+                           let d = linea.dropFirst(6).data(using: .utf8),
+                           let obj = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
+                           let fragment = obj["text"] as? String {
+                            respuestaCompleta += fragment
+                        }
+                    }
+                }
+                if !respuestaCompleta.isEmpty {
+                    guard var ttsComponents = URLComponents(string: "https://bidjuanmi.com/tts") else { return }
+                    ttsComponents.queryItems = [URLQueryItem(name: "text", value: respuestaCompleta)]
+                    if let audioUrl = ttsComponents.url {
+                        let (audioData, _) = try await URLSession.shared.data(from: audioUrl)
+                        BidAudioPlayer.shared.play(data: audioData)
+                        try? await Task.sleep(nanoseconds: 500_000_000)
+                        await MainActor.run {
+                            BidEscuchaManager.instancia?.enConversacion = true
+                            BidEscuchaManager.instancia?.reanudar()
+                        }
+                    }
+                }
+            }
+        } catch {
+            await MainActor.run { cargando = false }
+        }
+    }
+}
+
+struct DocumentPickerView: UIViewControllerRepresentable {
+    @Binding var url: URL?
+    @Binding var nombre: String
+    @Environment(\.dismiss) var dismiss
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [
+            .pdf, .text,
+            UTType(filenameExtension: "doc")!,
+            UTType(filenameExtension: "docx")!,
+            UTType(filenameExtension: "xls")!,
+            UTType(filenameExtension: "xlsx")!
+        ])
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
+
+    class Coordinator: NSObject, UIDocumentPickerDelegate {
+        let parent: DocumentPickerView
+        init(_ parent: DocumentPickerView) { self.parent = parent }
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            guard let url = urls.first else { return }
+            parent.url = url
+            parent.nombre = url.lastPathComponent
+            parent.dismiss()
+        }
+    }
+}
+
+struct DocumentosView: View {
+    @StateObject private var vm = DocumentosViewModel()
+    @EnvironmentObject var locationManager: LocationManager
+    @FocusState private var tecladoActivo: Bool
+    let cyan = Color(red: 0, green: 0.71, blue: 0.85)
+    let fondo = Color(red: 0.01, green: 0.03, blue: 0.06)
+
+    var body: some View {
+        ZStack {
+            fondo.ignoresSafeArea()
+            VStack(spacing: 0) {
+                HStack {
+                    Text("DOCUMENTOS")
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundColor(cyan)
+                        .tracking(3)
+                    Spacer()
+                    Button {
+                        vm.archivoSeleccionado = nil
+                        vm.nombreArchivo = ""
+                        vm.pregunta = ""
+                    } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                            .foregroundColor(cyan.opacity(0.7))
+                            .font(.system(size: 18))
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color(red: 0.01, green: 0.05, blue: 0.1))
+
+                ScrollView {
+                    VStack(spacing: 20) {
+                        Button {
+                            tecladoActivo = false
+                            vm.mostrarPicker = true
+                        } label: {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(cyan.opacity(0.3), lineWidth: 1)
+                                    .frame(height: 160)
+                                    .background(Color(red: 0.02, green: 0.06, blue: 0.12).cornerRadius(12))
+                                VStack(spacing: 12) {
+                                    Image(systemName: vm.archivoSeleccionado == nil ? "doc.badge.plus" : "doc.fill")
+                                        .font(.system(size: 44))
+                                        .foregroundColor(vm.archivoSeleccionado == nil ? cyan.opacity(0.4) : cyan)
+                                    if vm.nombreArchivo.isEmpty {
+                                        Text("Toca para seleccionar archivo")
+                                            .font(.system(size: 12, design: .monospaced))
+                                            .foregroundColor(cyan.opacity(0.4))
+                                        Text("PDF · Word · Excel · TXT")
+                                            .font(.system(size: 10, design: .monospaced))
+                                            .foregroundColor(cyan.opacity(0.25))
+                                    } else {
+                                        Text(vm.nombreArchivo)
+                                            .font(.system(size: 13, design: .monospaced))
+                                            .foregroundColor(cyan)
+                                            .multilineTextAlignment(.center)
+                                            .padding(.horizontal, 16)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("QUE QUIERES SABER? (OPCIONAL)")
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundColor(cyan.opacity(0.5))
+                                .tracking(2)
+                            TextField("Ej: Resumeme esto, traduce al inglés...", text: $vm.pregunta, axis: .vertical)
+                                .font(.system(size: 14))
+                                .foregroundColor(.white)
+                                .padding(12)
+                                .background(Color(red: 0.05, green: 0.1, blue: 0.18))
+                                .cornerRadius(10)
+                                .focused($tecladoActivo)
+                                .lineLimit(3)
+                        }
+                        .padding(.horizontal, 16)
+
+                        Button {
+                            tecladoActivo = false
+                            Task { await vm.subirDocumento() }
+                        } label: {
+                            HStack(spacing: 10) {
+                                if vm.cargando {
+                                    ProgressView().tint(fondo)
+                                } else {
+                                    Image(systemName: "arrow.up.circle.fill")
+                                }
+                                Text(vm.cargando ? "Subiendo..." : "SUBIR A BID")
+                                    .font(.system(size: 14, design: .monospaced))
+                            }
+                            .foregroundColor(fondo)
+                            .padding(.vertical, 14)
+                            .padding(.horizontal, 32)
+                            .background(vm.archivoSeleccionado == nil ? cyan.opacity(0.3) : cyan)
+                            .cornerRadius(10)
+                        }
+                        .disabled(vm.archivoSeleccionado == nil || vm.cargando)
+
+                        Spacer(minLength: 40)
+                    }
+                    .padding(.top, 20)
+                }
+            }
+        }
+        .sheet(isPresented: $vm.mostrarPicker) {
+            DocumentPickerView(url: $vm.archivoSeleccionado, nombre: $vm.nombreArchivo)
+        }
+        .onAppear {
+            vm.locationManager = locationManager
         }
     }
 }
