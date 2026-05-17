@@ -438,6 +438,11 @@ class WearablesViewModel: ObservableObject {
           if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
           continuation.resume()
         }
+         }
+      await MainActor.run {
+          BidEscuchaManager.instancia?.enConversacion = true
+          BidEscuchaManager.instancia?.reanudar()
+                          
       }
     } catch {}
   }
