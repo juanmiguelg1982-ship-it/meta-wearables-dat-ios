@@ -496,10 +496,35 @@ class FotoAnalisisViewModel: ObservableObject {
         if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let desc = json["descripcion"] as? String {
             await MainActor.run { cargando = false }
-            await reproducirAudio(texto: desc)
-            await MainActor.run {
-                BidEscuchaManager.instancia?.enConversacion = true
-                BidEscuchaManager.instancia?.reanudar()
+            guard var ttsComponents = URLComponents(string: "https://bidjuanmi.com/tts") else { return }
+            ttsComponents.queryItems = [URLQueryItem(name: "text", value: desc)]
+            if let audioUrl = ttsComponents.url {
+                let (audioData, _) = try await URLSession.shared.data(from: audioUrl)
+                BidAudioPlayer.shared.play(data: audioData)
+                await withCheckedContinuation { continuation in
+                    var observador: NSObjectProtocol?
+                    var resumido = false
+                    observador = NotificationCenter.default.addObserver(
+                        forName: NSNotification.Name("BIDAudioTerminado"),
+                        object: nil,
+                        queue: .main
+                    ) { _ in
+                        guard !resumido else { return }
+                        resumido = true
+                        if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
+                        continuation.resume()
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) {
+                        guard !resumido else { return }
+                        resumido = true
+                        if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
+                        continuation.resume()
+                    }
+                }
+                await MainActor.run {
+                    BidEscuchaManager.instancia?.enConversacion = true
+                    BidEscuchaManager.instancia?.reanudar()
+                }
             }
         }
     } catch {
@@ -858,11 +883,30 @@ class DocumentosViewModel: ObservableObject {
                     if let audioUrl = ttsComponents.url {
                         let (audioData, _) = try await URLSession.shared.data(from: audioUrl)
                         BidAudioPlayer.shared.play(data: audioData)
-                        try? await Task.sleep(nanoseconds: 500_000_000)
-                        await MainActor.run {
-                            BidEscuchaManager.instancia?.enConversacion = true
-                            BidEscuchaManager.instancia?.reanudar()
-                        }
+await withCheckedContinuation { continuation in
+    var observador: NSObjectProtocol?
+    var resumido = false
+    observador = NotificationCenter.default.addObserver(
+        forName: NSNotification.Name("BIDAudioTerminado"),
+        object: nil,
+        queue: .main
+    ) { _ in
+        guard !resumido else { return }
+        resumido = true
+        if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
+        continuation.resume()
+    }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) {
+        guard !resumido else { return }
+        resumido = true
+        if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
+        continuation.resume()
+    }
+}
+await MainActor.run {
+    BidEscuchaManager.instancia?.enConversacion = true
+    BidEscuchaManager.instancia?.reanudar()
+}
                     }
                 }
             }
