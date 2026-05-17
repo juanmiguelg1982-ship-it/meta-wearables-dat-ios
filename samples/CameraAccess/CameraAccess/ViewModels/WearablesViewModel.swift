@@ -19,7 +19,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private var ultimoTexto = ""
   private var textoAnterior = ""
   private var faseEscucha = false
-  private var enConversacion = false
+  var enConversacion = false
   private var ultimoResultado: Date = Date()
   private var vigilanteTask: Task<Void, Never>?
   private var escuchandoOk = false
