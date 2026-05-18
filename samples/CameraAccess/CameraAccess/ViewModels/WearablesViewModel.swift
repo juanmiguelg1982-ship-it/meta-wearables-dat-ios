@@ -379,8 +379,9 @@ class WearablesViewModel: ObservableObject {
   func pantallaEncendida() {
     pantallEncendida = true
     bidActivadoManual = false
+    BidEscuchaManager.instancia?.pausadoPorSistema = false
     actualizarEstadoBid()
-  }
+}
 
   func pantallaApagada() {
     pantallEncendida = false
@@ -455,13 +456,21 @@ class WearablesViewModel: ObservableObject {
     }
 
     // Observar pantalla encendida/apagada
+    
     NotificationCenter.default.addObserver(
-        forName: UIApplication.didEnterBackgroundNotification,
-        object: nil,
-        queue: .main
-    ) { [weak self] _ in
-        Task { @MainActor in self?.pantallaApagada() }
-    }
+    forName: UIApplication.didBecomeActiveNotification,
+    object: nil,
+    queue: .main
+) { [weak self] _ in
+    Task { @MainActor in self?.pantallaEncendida() }
+}
+NotificationCenter.default.addObserver(
+    forName: UIApplication.protectedDataWillBecomeUnavailableNotification,
+    object: nil,
+    queue: .main
+) { [weak self] _ in
+    Task { @MainActor in self?.pantallaApagada() }
+}
 
     // Bluetooth
     configurarBluetooth()
