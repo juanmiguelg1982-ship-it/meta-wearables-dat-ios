@@ -170,7 +170,46 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     onEstado("Escuchando... di OYE")
     arrancarVigilante()
   }
-
+private func reproducirPitido() {
+    let sampleRate = 44100.0
+    let duracion = 0.12
+    let frecuencia = 880.0
+    let numSamples = Int(sampleRate * duracion)
+    
+    var samples = [Float](repeating: 0, count: numSamples)
+    for i in 0..<numSamples {
+        let t = Double(i) / sampleRate
+        let envelope = min(Double(i) / 100.0, 1.0) * min(Double(numSamples - i) / 100.0, 1.0)
+        samples[i] = Float(sin(2.0 * Double.pi * frecuencia * t) * envelope * 0.3)
+    }
+    
+    let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
+    let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(numSamples))!
+    buffer.frameLength = AVAudioFrameCount(numSamples)
+    memcpy(buffer.floatChannelData![0], samples, numSamples * 4)
+    
+    let data = NSMutableData()
+    // Convertir a WAV y reproducir con BidAudioPlayer
+    var wav = Data()
+    let dataSize = UInt32(numSamples * 4)
+    let sr = UInt32(sampleRate)
+    wav.append("RIFF".data(using: .ascii)!)
+    wav.append(withUnsafeBytes(of: (36 + dataSize).littleEndian) { Data($0) })
+    wav.append("WAVE".data(using: .ascii)!)
+    wav.append("fmt ".data(using: .ascii)!)
+    wav.append(withUnsafeBytes(of: UInt32(16).littleEndian) { Data($0) })
+    wav.append(withUnsafeBytes(of: UInt16(3).littleEndian) { Data($0) })
+    wav.append(withUnsafeBytes(of: UInt16(1).littleEndian) { Data($0) })
+    wav.append(withUnsafeBytes(of: sr.littleEndian) { Data($0) })
+    wav.append(withUnsafeBytes(of: (sr * 4).littleEndian) { Data($0) })
+    wav.append(withUnsafeBytes(of: UInt16(4).littleEndian) { Data($0) })
+    wav.append(withUnsafeBytes(of: UInt16(32).littleEndian) { Data($0) })
+    wav.append("data".data(using: .ascii)!)
+    wav.append(withUnsafeBytes(of: dataSize.littleEndian) { Data($0) })
+    wav.append(Data(bytes: samples, count: numSamples * 4))
+    
+    BidAudioPlayer.shared.play(data: wav)
+}
   private func wakeWordDetectado() {
     guard !grabandoRespuesta else { return }
     faseEscucha = true
