@@ -575,4 +575,31 @@ class WearablesViewModel: ObservableObject {
     }
     BluetoothMonitor.shared.iniciar()
   }
+   }
+  class BluetoothMonitor: NSObject, CBCentralManagerDelegate {
+  static let shared = BluetoothMonitor()
+  var onTeslaConectado: ((Bool) -> Void)?
+  private var central: CBCentralManager?
+  private let teslaNames = ["Model 3", "Tesla", "MODEL 3"]
+
+  func iniciar() {
+    central = CBCentralManager(delegate: self, queue: nil)
+  }
+
+  func centralManagerDidUpdateState(_ central: CBCentralManager) {}
+
+  func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+    let nombre = peripheral.name ?? ""
+    if teslaNames.contains(where: { nombre.contains($0) }) {
+      onTeslaConectado?(true)
+    }
+  }
+
+  func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
+    let nombre = peripheral.name ?? ""
+    if teslaNames.contains(where: { nombre.contains($0) }) {
+      onTeslaConectado?(false)
+    }
+  }
 }
+
