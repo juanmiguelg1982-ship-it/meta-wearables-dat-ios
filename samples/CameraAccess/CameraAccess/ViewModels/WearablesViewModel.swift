@@ -63,8 +63,9 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     guard !pausadoPorSistema else { return }
     pausadoPorSistema = true
     pararEngine()
+    try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     onEstado("⏸ Bid pausado")
-  }
+}
 
   func reanudarPorSistema() {
     guard pausadoPorSistema else { return }
