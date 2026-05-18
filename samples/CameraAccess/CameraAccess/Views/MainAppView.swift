@@ -282,7 +282,26 @@ struct BidStatusView: View {
                     .padding(.vertical, 8)
                     .background(Color.black.opacity(0.5))
                     .cornerRadius(6)
-                    .padding(.bottom, 40)
+                    .padding(.bottom, 20)
+
+                // Botón activar/pausar Bid
+                Button {
+                    viewModel.toggleBidManual()
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: viewModel.bidDebeEstarActivo ? "mic.fill" : "mic.slash.fill")
+                        Text(viewModel.bidDebeEstarActivo ? "BID ACTIVO" : "ACTIVAR BID")
+                            .font(.system(size: 13, design: .monospaced))
+                            .tracking(2)
+                    }
+                    .foregroundColor(viewModel.bidDebeEstarActivo ? fondo : cyan)
+                    .padding(.vertical, 14)
+                    .padding(.horizontal, 32)
+                    .background(viewModel.bidDebeEstarActivo ? cyan : cyan.opacity(0.15))
+                    .cornerRadius(10)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(cyan.opacity(0.4), lineWidth: 1))
+                }
+                .padding(.bottom, 40)
             }
         }
     }
