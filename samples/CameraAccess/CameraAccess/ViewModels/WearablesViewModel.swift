@@ -293,7 +293,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 }
 
 @MainActor
-class WearablesViewModel: ObservableObject, CBCentralManagerDelegate {
+class WearablesViewModel: ObservableObject {
   @Published var devices: [DeviceIdentifier]
   @Published var registrationState: RegistrationState
   @Published var showGettingStartedSheet: Bool = false
@@ -313,7 +313,7 @@ class WearablesViewModel: ObservableObject, CBCentralManagerDelegate {
   var streamVM: StreamSessionViewModel
   var ultimaLat: Double = 0
   var ultimaLon: Double = 0
-  private var centralManager: CBCentralManager?
+  
 
   init(wearables: WearablesInterface) {
     self.wearables = wearables
@@ -348,11 +348,9 @@ class WearablesViewModel: ObservableObject, CBCentralManagerDelegate {
     }
 
     // Bluetooth para detectar Tesla
-    centralManager = CBCentralManager(delegate: nil, queue: nil)
-  }
+      }
 
-  nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {}
-
+  
   deinit {
     registrationTask?.cancel()
     deviceStreamTask?.cancel()
@@ -571,5 +569,14 @@ NotificationCenter.default.addObserver(
 
   func dismissError() {
     showError = false
+  }
+  func configurarBluetooth() {
+    BluetoothMonitor.shared.onTeslaConectado = { [weak self] conectado in
+      Task { @MainActor in
+        self?.teslaBluetoothConectado = conectado
+        self?.actualizarEstadoBid()
+      }
+    }
+    BluetoothMonitor.shared.iniciar()
   }
 }
