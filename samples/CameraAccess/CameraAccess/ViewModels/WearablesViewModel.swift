@@ -458,19 +458,19 @@ class WearablesViewModel: ObservableObject, CBCentralManagerDelegate {
 
     // Observar pantalla encendida/apagada
     NotificationCenter.default.addObserver(
-      forName: UIApplication.didBecomeActiveNotification,
-      object: nil,
-      queue: .main
-    ) { [weak self] _ in
-      self?.pantallaEncendida()
-    }
-    NotificationCenter.default.addObserver(
-      forName: UIApplication.didEnterBackgroundNotification,
-      object: nil,
-      queue: .main
-    ) { [weak self] _ in
-      self?.pantallaApagada()
-    }
+    forName: UIApplication.didBecomeActiveNotification,
+    object: nil,
+    queue: .main
+) { [weak self] _ in
+    Task { @MainActor in self?.pantallaEncendida() }
+}
+NotificationCenter.default.addObserver(
+    forName: UIApplication.didEnterBackgroundNotification,
+    object: nil,
+    queue: .main
+) { [weak self] _ in
+    Task { @MainActor in self?.pantallaApagada() }
+}
 
     // Estado inicial — pantalla encendida al arrancar
     actualizarEstadoBid()
