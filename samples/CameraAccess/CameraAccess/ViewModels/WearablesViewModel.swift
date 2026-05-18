@@ -275,16 +275,16 @@ private func reproducirPitido() {
     }
   }
 
-  private func terminarConversacion() {
+ private func terminarConversacion() {
     envioTimer?.invalidate()
     conversacionTimer?.invalidate()
     grabandoRespuesta = false
     faseEscucha = false
     pararEngine()
-    AudioServicesPlaySystemSound(1057)
+    reproducirPitido()
     onEstado("Conversacion terminada")
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciarEscuchaBID() }
-  }
+}
 
   private func pararYEnviar() {
     guard grabandoRespuesta else { return }
