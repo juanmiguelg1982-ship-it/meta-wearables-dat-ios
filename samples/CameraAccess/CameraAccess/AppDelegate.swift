@@ -9,8 +9,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   func applicationDidEnterBackground(_ application: UIApplication) {
     try? AVAudioSession.sharedInstance().setCategory(
       .playAndRecord,
-      mode: .default,
-      options: [.allowBluetoothHFP, .mixWithOthers, .defaultToSpeaker]
+      mode: .measurement,
+      options: [.allowBluetoothHFP, .mixWithOthers]
     )
     try? AVAudioSession.sharedInstance().setActive(true)
     silencioPlayer?.play()
@@ -18,8 +18,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   func applicationWillResignActive(_ application: UIApplication) {
     try? AVAudioSession.sharedInstance().setCategory(
       .playAndRecord,
-      mode: .default,
-      options: [.allowBluetoothHFP, .mixWithOthers, .defaultToSpeaker]
+      mode: .measurement,
+      options: [.allowBluetoothHFP, .mixWithOthers]
     )
     try? AVAudioSession.sharedInstance().setActive(true)
     silencioPlayer?.play()
@@ -30,8 +30,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   private func configurarAudioBackground() {
     try? AVAudioSession.sharedInstance().setCategory(
       .playAndRecord,
-      mode: .default,
-      options: [.allowBluetoothHFP, .mixWithOthers, .defaultToSpeaker]
+      mode: .measurement,
+      options: [.allowBluetoothHFP, .mixWithOthers]
     )
     try? AVAudioSession.sharedInstance().setActive(true)
     let sampleRate = 44100.0
