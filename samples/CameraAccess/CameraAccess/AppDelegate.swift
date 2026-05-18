@@ -9,7 +9,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   func applicationDidEnterBackground(_ application: UIApplication) {
     try? AVAudioSession.sharedInstance().setCategory(
       .playAndRecord,
-      mode: .measurement,
+      mode: .voiceChat,
       options: [.allowBluetoothHFP, .mixWithOthers]
     )
     try? AVAudioSession.sharedInstance().setActive(true)
@@ -18,7 +18,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   func applicationWillResignActive(_ application: UIApplication) {
     try? AVAudioSession.sharedInstance().setCategory(
       .playAndRecord,
-      mode: .measurement,
+      mode: .voiceChat,
       options: [.allowBluetoothHFP, .mixWithOthers]
     )
     try? AVAudioSession.sharedInstance().setActive(true)
@@ -30,7 +30,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   private func configurarAudioBackground() {
     try? AVAudioSession.sharedInstance().setCategory(
       .playAndRecord,
-      mode: .measurement,
+      mode: .voiceChat,
       options: [.allowBluetoothHFP, .mixWithOthers]
     )
     try? AVAudioSession.sharedInstance().setActive(true)
