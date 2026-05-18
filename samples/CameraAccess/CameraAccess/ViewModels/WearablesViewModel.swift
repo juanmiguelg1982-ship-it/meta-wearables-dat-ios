@@ -456,19 +456,15 @@ class WearablesViewModel: ObservableObject {
 
     // Observar pantalla encendida/apagada
     NotificationCenter.default.addObserver(
-    forName: UIApplication.didBecomeActiveNotification,
-    object: nil,
-    queue: .main
-) { [weak self] _ in
-    Task { @MainActor in self?.pantallaEncendida() }
-}
-NotificationCenter.default.addObserver(
-    forName: UIApplication.didEnterBackgroundNotification,
-    object: nil,
-    queue: .main
-) { [weak self] _ in
-    Task { @MainActor in self?.pantallaApagada() }
-}
+        forName: UIApplication.didEnterBackgroundNotification,
+        object: nil,
+        queue: .main
+    ) { [weak self] _ in
+        Task { @MainActor in self?.pantallaApagada() }
+    }
+
+    // Bluetooth
+    configurarBluetooth()
 
     // Estado inicial — pantalla encendida al arrancar
     actualizarEstadoBid()
@@ -481,7 +477,7 @@ NotificationCenter.default.addObserver(
       guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
             let mensaje = json["mensaje"] as? String,
             !mensaje.isEmpty else { return }
-      let vm = self.streamVM ?? StreamSessionViewModel(wearables: self.wearables)
+      let vm = self.streamVM
       await vm.reproducirAudio(texto: mensaje)
       await withCheckedContinuation { continuation in
         var observador: NSObjectProtocol?
