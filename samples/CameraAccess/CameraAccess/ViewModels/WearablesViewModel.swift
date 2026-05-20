@@ -63,7 +63,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     guard !pausadoPorSistema else { return }
     pausadoPorSistema = true
     pararEngine()
-    try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+    try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .default, options: [.allowBluetoothHFP, .mixWithOthers])
     try? AVAudioSession.sharedInstance().setActive(true)
     onEstado("⏸ Bid pausado")
 }
@@ -105,8 +105,15 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     guard let info = notification.userInfo,
           let tipoValor = info[AVAudioSessionInterruptionTypeKey] as? UInt,
           let tipo = AVAudioSession.InterruptionType(rawValue: tipoValor) else { return }
-    if tipo == .ended {
+    if tipo == .began {
+      // Llamada entrante — pausar Bid para liberar el audio
+      pararEngine()
+    } else if tipo == .ended {
+      // Llamada terminada — reanudar Bid
       DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(true)
+        if self.pausadoPorSistema { return }
         if self.enConversacion { self.iniciarEscuchaPregunta() }
         else { self.iniciarEscuchaBID() }
       }
