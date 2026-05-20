@@ -352,7 +352,7 @@ class WearablesViewModel: ObservableObject {
   @Published var bidActivadoManual: Bool = false
   @Published var pantallEncendida: Bool = true
   @Published var teslaBluetoothConectado: Bool = false
-
+  static weak var instancia: WearablesViewModel?
   private var registrationTask: Task<Void, Never>?
   private var deviceStreamTask: Task<Void, Never>?
   private var setupDeviceStreamTask: Task<Void, Never>?
@@ -369,6 +369,7 @@ class WearablesViewModel: ObservableObject {
     self.devices = wearables.devices
     self.registrationState = wearables.registrationState
     self.streamVM = StreamSessionViewModel(wearables: wearables)
+    WearablesViewModel.instancia = self
     setupDeviceStreamTask = Task { await setupDeviceStream() }
     registrationTask = Task {
       for await registrationState in wearables.registrationStateStream() {
