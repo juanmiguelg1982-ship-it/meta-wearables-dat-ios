@@ -120,7 +120,17 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
       }
     }
   }
-
+@objc private func rutaAudioCambio(_ notification: Notification) {
+    let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
+    let hayTesla = outputs.contains { output in
+        let nombre = output.portName.lowercased()
+        return nombre.contains("tesla") || nombre.contains("model 3") || nombre.contains("model s") || nombre.contains("model x")
+    }
+    DispatchQueue.main.async {
+        WearablesViewModel.instancia?.teslaBluetoothConectado = hayTesla
+        WearablesViewModel.instancia?.actualizarEstadoBid()
+    }
+}
   private func arrancarVigilante() {
     vigilanteTask?.cancel()
     ultimoResultado = Date()
