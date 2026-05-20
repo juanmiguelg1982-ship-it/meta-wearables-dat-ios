@@ -429,13 +429,7 @@ class WearablesViewModel: ObservableObject {
     }
   }
 
- func pausarPorSistema() {
-    guard !pausadoPorSistema else { return }
-    pausadoPorSistema = true
-    pararEngine()
-    try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-    onEstado("⏸ Bid pausado")
-}
+ 
 func pantallaEncendida() {
     pantallEncendida = true
     bidActivadoManual = false
