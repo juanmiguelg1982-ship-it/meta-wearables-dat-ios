@@ -60,13 +60,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
   }
 
-  func pausarPorSistema() {
-    guard !pausadoPorSistema else { return }
-    pausadoPorSistema = true
-    pararEngine()
-    try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-    onEstado("⏸ Bid pausado")
-}
+  
 
   func reanudarPorSistema() {
     guard pausadoPorSistema else { return }
@@ -435,14 +429,22 @@ class WearablesViewModel: ObservableObject {
     }
   }
 
-  func pausarPorSistema() {
+ func pausarPorSistema() {
     guard !pausadoPorSistema else { return }
     pausadoPorSistema = true
     pararEngine()
     try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     onEstado("⏸ Bid pausado")
 }
-
+func pantallaEncendida() {
+    pantallEncendida = true
+    bidActivadoManual = false
+    BidEscuchaManager.instancia?.pausadoPorSistema = false
+    actualizarEstadoBid()
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+}
   func pantallaApagada() {
     pantallEncendida = false
     actualizarEstadoBid()
