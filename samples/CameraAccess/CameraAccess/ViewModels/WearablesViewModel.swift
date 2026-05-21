@@ -59,7 +59,12 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
       DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self?.iniciarEscuchaBID() }
     }
   }
- 
+ func pausarPorSistema() {
+    guard !pausadoPorSistema else { return }
+    pausadoPorSistema = true
+    pararEngine()
+    onEstado("⏸ Bid pausado")
+}
   func reanudarPorSistema() {
     guard pausadoPorSistema else { return }
     pausadoPorSistema = false
@@ -434,7 +439,8 @@ func pantallaEncendida() {
     BidEscuchaManager.instancia?.pausadoPorSistema = false
     actualizarEstadoBid()
 }
-}
+
+  func pantallaApagada() {
   func pantallaApagada() {
     pantallEncendida = false
     actualizarEstadoBid()
@@ -635,8 +641,9 @@ NotificationCenter.default.addObserver(
       }
     }
     BluetoothMonitor.shared.iniciar()
-  }
-     class BluetoothMonitor: NSObject, CBCentralManagerDelegate {
+ }
+
+class BluetoothMonitor: NSObject, CBCentralManagerDelegate {
   static let shared = BluetoothMonitor()
   var onTeslaConectado: ((Bool) -> Void)?
   private var central: CBCentralManager?
