@@ -59,14 +59,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
       DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self?.iniciarEscuchaBID() }
     }
   }
-
-  func pausarPorSistema() {func pausarPorSistema() {
-    guard !pausadoPorSistema else { return }
-    pausadoPorSistema = true
-    pararEngine()
-    onEstado("⏸ Bid pausado")
-}
-
+ 
   func reanudarPorSistema() {
     guard pausadoPorSistema else { return }
     pausadoPorSistema = false
