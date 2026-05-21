@@ -139,10 +139,12 @@ func reanudarPorTesla() {
       return nombre.contains("tesla") || nombre.contains("model 3") || nombre.contains("model s") || nombre.contains("model x")
     }
     DispatchQueue.main.async {
+      let yaConectado = WearablesViewModel.instancia?.teslaBluetoothConectado ?? false
+      guard hayTesla != yaConectado else { return }
       WearablesViewModel.instancia?.teslaBluetoothConectado = hayTesla
       WearablesViewModel.instancia?.actualizarEstadoBid()
     }
-  }
+}
 
   private func arrancarVigilante() {
     vigilanteTask?.cancel()
@@ -421,16 +423,20 @@ class WearablesViewModel: ObservableObject {
 }
   func toggleBidManual() {
     bidActivadoManual.toggle()
-    actualizarEstadoBid()
-  }
+    if teslaBluetoothConectado {
+        if bidActivadoManual {
+            BidEscuchaManager.instancia?.reanudarPorTesla()
+        } else {
+            BidEscuchaManager.instancia?.pausarPorTesla()
+        }
+    } else {
+        actualizarEstadoBid()
+    }
+}
 
   func actualizarEstadoBid() {
     if bidDebeEstarActivo {
-        if teslaBluetoothConectado {
-            BidEscuchaManager.instancia?.reanudarPorTesla()
-        } else {
-            BidEscuchaManager.instancia?.reanudarPorSistema()
-        }
+        BidEscuchaManager.instancia?.reanudarPorSistema()
     } else {
         if teslaBluetoothConectado {
             BidEscuchaManager.instancia?.pausarPorTesla()
@@ -540,9 +546,7 @@ class WearablesViewModel: ObservableObject {
     }
 
     configurarBluetooth()
-    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-    self?.actualizarEstadoBid()
-}
+   actualizarEstadoBid()
   }
 
   func comprobarVozPendiente() async {
