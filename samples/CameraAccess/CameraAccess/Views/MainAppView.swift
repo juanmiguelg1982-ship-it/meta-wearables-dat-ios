@@ -1397,21 +1397,6 @@ if let url = webViewUrl {
     }
 }
 
-struct BidWebKitView: UIViewRepresentable {
-    let url: URL
-    func makeUIView(context: Context) -> WKWebView {
-        let config = WKWebViewConfiguration()
-        config.allowsInlineMediaPlayback = true
-        let webView = WKWebView(frame: .zero, configuration: config)
-        webView.load(URLRequest(url: url))
-        return webView
-    }
-    func updateUIView(_ webView: WKWebView, context: Context) {
-        if webView.url != url {
-            webView.load(URLRequest(url: url))
-        }
-    }
-}
 
 struct BidWebView: UIViewRepresentable {
     let url: URL
@@ -1427,7 +1412,7 @@ struct BidWebView: UIViewRepresentable {
     func updateUIView(_ uiView: WKWebView, context: Context) {}
 }
 
-// MARK: - Main App View
+
 // MARK: - Main App View
 
 struct MainAppView: View {
