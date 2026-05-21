@@ -1263,10 +1263,137 @@ struct PantallaView: View {
         .onAppear { vm.cargar() }
     }
 }
-// MARK: - Main App View
+// MARK: - Web View
 
-// MARK: - Main App View
+import WebKit
 
+class WebViewModel: ObservableObject {
+    @Published var urlActual: String = ""
+    private var timer: Timer?
+    static let shared = WebViewModel()
+
+    init() {
+        timer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            self?.comprobarUrl()
+        }
+    }
+
+    deinit { timer?.invalidate() }
+
+    func comprobarUrl() {
+        guard let url = URL(string: "https://bidjuanmi.com/web-url") else { return }
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            guard let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let url = json["url"] as? String,
+                  !url.isEmpty else { return }
+            DispatchQueue.main.async { self.urlActual = url }
+        }.resume()
+    }
+
+    func cargarUrl(_ urlString: String) {
+        DispatchQueue.main.async { self.urlActual = urlString }
+    }
+}
+
+struct WebTabView: View {
+    @StateObject private var vm = WebViewModel.shared
+    @State private var urlInput: String = ""
+    @State private var webViewUrl: URL? = nil
+    let cyan = Color(red: 0, green: 0.71, blue: 0.85)
+    let fondo = Color(red: 0.01, green: 0.03, blue: 0.06)
+
+    var body: some View {
+        ZStack {
+            fondo.ignoresSafeArea()
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Text("WEB")
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundColor(cyan)
+                        .tracking(3)
+                    Spacer()
+                    if webViewUrl != nil {
+                        Button {
+                            webViewUrl = nil
+                            vm.urlActual = ""
+                        } label: {
+                            Image(systemName: "xmark.circle")
+                                .foregroundColor(cyan.opacity(0.7))
+                                .font(.system(size: 18))
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color(red: 0.01, green: 0.05, blue: 0.1))
+
+                if let url = webViewUrl {
+                    // WebView
+                    BidWebKitView(url: url)
+                        .ignoresSafeArea(edges: .bottom)
+                } else {
+                    // Pantalla vacía con input manual
+                    Spacer()
+                    VStack(spacing: 20) {
+                        Image(systemName: "globe")
+                            .font(.system(size: 50))
+                            .foregroundColor(cyan.opacity(0.3))
+                        Text("Bid abrirá páginas aquí")
+                            .font(.system(size: 13, design: .monospaced))
+                            .foregroundColor(cyan.opacity(0.3))
+
+                        // Input manual por si quieres abrir tú una URL
+                        HStack(spacing: 8) {
+                            TextField("https://...", text: $urlInput)
+                                .font(.system(size: 13))
+                                .foregroundColor(.white)
+                                .padding(10)
+                                .background(Color(red: 0.05, green: 0.1, blue: 0.18))
+                                .cornerRadius(8)
+                            Button {
+                                if let url = URL(string: urlInput), !urlInput.isEmpty {
+                                    webViewUrl = url
+                                }
+                            } label: {
+                                Image(systemName: "arrow.right.circle.fill")
+                                    .font(.system(size: 28))
+                                    .foregroundColor(cyan)
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                    }
+                    Spacer()
+                }
+            }
+        }
+        .onChange(of: vm.urlActual) { nuevaUrl in
+            if !nuevaUrl.isEmpty, let url = URL(string: nuevaUrl) {
+                webViewUrl = url
+            }
+        }
+        .onAppear { vm.comprobarUrl() }
+    }
+}
+
+struct BidWebKitView: UIViewRepresentable {
+    let url: URL
+
+    func makeUIView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.allowsInlineMediaPlayback = true
+        let webView = WKWebView(frame: .zero, configuration: config)
+        webView.load(URLRequest(url: url))
+        return webView
+    }
+
+    func updateUIView(_ webView: WKWebView, context: Context) {
+        if webView.url != url {
+            webView.load(URLRequest(url: url))
+        }
+    }
+}
 // MARK: - Main App View
 
 struct MainAppView: View {
@@ -1282,7 +1409,8 @@ struct MainAppView: View {
         ("DOCS",     "doc.fill",                     "DOCS"),
         ("PANTALLA", "rectangle.on.rectangle",       "PANTALLA"),
         ("GAFAS",    "eyeglasses",                   "GAFAS"),
-        ("PANEL",    "square.grid.2x2",              "PANEL")
+        ("PANEL",    "square.grid.2x2",              "PANEL"),
+        ("WEB",      "globe",                         "WEB")
     ]
 
     let cyan = Color(red: 0, green: 0.71, blue: 0.85)
@@ -1318,8 +1446,10 @@ struct MainAppView: View {
                 case "GAFAS":
                     GafasView(viewModel: viewModel, streamVM: viewModel.streamVM)
                 case "PANEL":
-                    BidWebView(url: URL(string: "https://bidjuanmi.com?app_token=bid-app-token-juanmi")!)
-                        .ignoresSafeArea()
+                 BidWebView(url: URL(string: "https://bidjuanmi.com?app_token=bid-app-token-juanmi")!)
+                    .ignoresSafeArea()
+                case "WEB":
+                     WebTabView()
                 default:
                     BidStatusView(viewModel: viewModel)
                 }
