@@ -60,11 +60,10 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
   }
 
-  func pausarPorSistema() {
+  func pausarPorSistema() {func pausarPorSistema() {
     guard !pausadoPorSistema else { return }
     pausadoPorSistema = true
     pararEngine()
-    try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     onEstado("⏸ Bid pausado")
 }
 
@@ -441,9 +440,7 @@ func pantallaEncendida() {
     bidActivadoManual = false
     BidEscuchaManager.instancia?.pausadoPorSistema = false
     actualizarEstadoBid()
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-    }
+}
 }
   func pantallaApagada() {
     pantallEncendida = false
