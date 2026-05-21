@@ -290,10 +290,11 @@ func reanudarPorTesla() {
 
   func reiniciarTimerConversacion() {
     conversacionTimer?.invalidate()
+    guard enConversacion, !pausadoPorSistema else { return }
     conversacionTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
-      self?.terminarConversacion()
+        self?.terminarConversacion()
     }
-  }
+}
 
   private func terminarConversacion() {
     envioTimer?.invalidate()
