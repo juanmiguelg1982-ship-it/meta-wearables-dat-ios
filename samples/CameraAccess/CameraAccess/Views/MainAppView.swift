@@ -1414,6 +1414,21 @@ struct BidWebKitView: UIViewRepresentable {
         }
     }
 }
+struct BidWebView: UIViewRepresentable {
+    let url: URL
+    func makeUIView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.allowsInlineMediaPlayback = true
+        let webView = WKWebView(frame: .zero, configuration: config)
+        var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+        webView.load(request)
+        return webView
+    }
+    func updateUIView(_ uiView: WKWebView, context: Context) {}
+}
+
+// MARK: - Main App View
 // MARK: - Main App View
 
 struct MainAppView: View {
