@@ -1316,13 +1316,20 @@ struct WebTabView: View {
                     Spacer()
                     if webViewUrl != nil {
                         Button {
-                            webViewUrl = nil
-                            vm.urlActual = ""
-                        } label: {
-                            Image(systemName: "xmark.circle")
-                                .foregroundColor(cyan.opacity(0.7))
-                                .font(.system(size: 18))
-                        }
+    webViewUrl = nil
+    vm.urlActual = ""
+    // Borrar también en Redis
+    guard let url = URL(string: "https://bidjuanmi.com/web-url") else { return }
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = try? JSONSerialization.data(withJSONObject: ["url": ""])
+    URLSession.shared.dataTask(with: request).resume()
+} label: {
+    Image(systemName: "xmark.circle")
+        .foregroundColor(cyan.opacity(0.7))
+        .font(.system(size: 18))
+}
                     }
                 }
                 .padding(.horizontal, 16)
