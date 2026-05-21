@@ -25,7 +25,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private var vigilanteTask: Task<Void, Never>?
   private var escuchandoOk = false
   var pausadoPorSistema = false
-
+  var engineActivo: Bool { audioEngine.isRunning }
+  
   static var instancia: BidEscuchaManager?
   static func pausarEngine() { instancia?.pausar() }
   static func reanudarEngine() { instancia?.reanudar() }
@@ -502,16 +503,19 @@ class WearablesViewModel: ObservableObject {
     }
 
     Task {
-      while true {
+    while true {
         try? await Task.sleep(nanoseconds: 5_000_000_000)
         await comprobarVozPendiente()
         await MainActor.run {
-          if self.bidDebeEstarActivo && BidEscuchaManager.instancia?.pausadoPorSistema == true {
-            BidEscuchaManager.instancia?.reanudarPorSistema()
-          }
+            if self.bidDebeEstarActivo && BidEscuchaManager.instancia?.pausadoPorSistema == true {
+                BidEscuchaManager.instancia?.reanudarPorSistema()
+            }
+            if self.bidDebeEstarActivo && BidEscuchaManager.instancia?.pausadoPorSistema == false && BidEscuchaManager.instancia?.engineActivo == false {
+                BidEscuchaManager.instancia?.iniciarEscuchaBID()
+            }
         }
-      }
     }
+}
 
     bidEscucha?.arrancar()
 
