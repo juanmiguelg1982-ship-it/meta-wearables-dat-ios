@@ -59,12 +59,14 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
       DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self?.iniciarEscuchaBID() }
     }
   }
- func pausarPorSistema() {
+
+  func pausarPorSistema() {
     guard !pausadoPorSistema else { return }
     pausadoPorSistema = true
     pararEngine()
     onEstado("⏸ Bid pausado")
-}
+  }
+
   func reanudarPorSistema() {
     guard pausadoPorSistema else { return }
     pausadoPorSistema = false
@@ -75,11 +77,9 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     guard !escuchandoOk else { return }
     escuchandoOk = true
     pararEngine()
-
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
     guard let req = recognitionRequest else { return }
     req.shouldReportPartialResults = true
-
     recognitionTask = speechRecognizer?.recognitionTask(with: req) { [weak self] result, error in
       guard let self = self else { return }
       if let result = result {
@@ -91,9 +91,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
           }
         }
       }
-      if error != nil {
-        self.escuchandoOk = false
-      }
+      if error != nil { self.escuchandoOk = false }
     }
     arrancarEngine()
   }
@@ -103,10 +101,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
           let tipoValor = info[AVAudioSessionInterruptionTypeKey] as? UInt,
           let tipo = AVAudioSession.InterruptionType(rawValue: tipoValor) else { return }
     if tipo == .began {
-      // Llamada entrante — pausar Bid para liberar el audio
       pararEngine()
     } else if tipo == .ended {
-      // Llamada terminada — reanudar Bid
       DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
         try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
         try? AVAudioSession.sharedInstance().setActive(true)
@@ -116,17 +112,19 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
       }
     }
   }
-@objc private func rutaAudioCambio(_ notification: Notification) {
+
+  @objc private func rutaAudioCambio(_ notification: Notification) {
     let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
     let hayTesla = outputs.contains { output in
-        let nombre = output.portName.lowercased()
-        return nombre.contains("tesla") || nombre.contains("model 3") || nombre.contains("model s") || nombre.contains("model x")
+      let nombre = output.portName.lowercased()
+      return nombre.contains("tesla") || nombre.contains("model 3") || nombre.contains("model s") || nombre.contains("model x")
     }
     DispatchQueue.main.async {
-        WearablesViewModel.instancia?.teslaBluetoothConectado = hayTesla
-        WearablesViewModel.instancia?.actualizarEstadoBid()
+      WearablesViewModel.instancia?.teslaBluetoothConectado = hayTesla
+      WearablesViewModel.instancia?.actualizarEstadoBid()
     }
-}
+  }
+
   private func arrancarVigilante() {
     vigilanteTask?.cancel()
     ultimoResultado = Date()
@@ -134,7 +132,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
       while !Task.isCancelled {
         try? await Task.sleep(nanoseconds: 3_000_000_000)
         guard let self = self, !self.enConversacion, !self.grabandoRespuesta else { continue }
-        if Date().timeIntervalSince(self.ultimoResultado) > 25 {
+        if Date().timeIntervalSince(self.ultimoResultado) > 60 {
           await MainActor.run {
             self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
             self.speechRecognizer?.delegate = self
@@ -150,20 +148,16 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     let msg = "engine:\(audioEngine.isRunning) conv:\(enConversacion) grab:\(grabandoRespuesta)"
     let msgEnc = msg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? msg
     URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msgEnc)")!).resume()
-
     enConversacion = false
     faseEscucha = false
     conversacionTimer?.invalidate()
     pararEngine()
-
     try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
     try? AVAudioSession.sharedInstance().setActive(true)
-
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
     guard let req = recognitionRequest else { return }
     req.shouldReportPartialResults = true
     ultimoResultado = Date()
-
     recognitionTask = speechRecognizer?.recognitionTask(with: req) { [weak self] result, error in
       guard let self = self, !self.faseEscucha else { return }
       if let result = result {
@@ -181,31 +175,22 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         }
       }
     }
-
     arrancarEngine()
     onEstado("Escuchando... di OYE")
     arrancarVigilante()
   }
-private func reproducirPitido() {
+
+  private func reproducirPitido() {
     let sampleRate = 44100.0
     let duracion = 0.12
     let frecuencia = 880.0
     let numSamples = Int(sampleRate * duracion)
-    
     var samples = [Float](repeating: 0, count: numSamples)
     for i in 0..<numSamples {
-        let t = Double(i) / sampleRate
-        let envelope = min(Double(i) / 100.0, 1.0) * min(Double(numSamples - i) / 100.0, 1.0)
-        samples[i] = Float(sin(2.0 * Double.pi * frecuencia * t) * envelope * 0.3)
+      let t = Double(i) / sampleRate
+      let envelope = min(Double(i) / 100.0, 1.0) * min(Double(numSamples - i) / 100.0, 1.0)
+      samples[i] = Float(sin(2.0 * Double.pi * frecuencia * t) * envelope * 0.3)
     }
-    
-    let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
-    let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(numSamples))!
-    buffer.frameLength = AVAudioFrameCount(numSamples)
-    memcpy(buffer.floatChannelData![0], samples, numSamples * 4)
-    
-    let data = NSMutableData()
-    // Convertir a WAV y reproducir con BidAudioPlayer
     var wav = Data()
     let dataSize = UInt32(numSamples * 4)
     let sr = UInt32(sampleRate)
@@ -223,15 +208,15 @@ private func reproducirPitido() {
     wav.append("data".data(using: .ascii)!)
     wav.append(withUnsafeBytes(of: dataSize.littleEndian) { Data($0) })
     wav.append(Data(bytes: samples, count: numSamples * 4))
-    
     BidAudioPlayer.shared.play(data: wav)
-}
+  }
+
   private func wakeWordDetectado() {
     guard !grabandoRespuesta else { return }
     faseEscucha = true
     enConversacion = true
     vigilanteTask?.cancel()
-    AudioServicesPlaySystemSound(1057)
+    reproducirPitido()
     pararEngine()
     iniciarEscuchaPregunta()
   }
@@ -250,11 +235,9 @@ private func reproducirPitido() {
     textoAnterior = ""
     onEstado("🎤 ...")
     pararEngine()
-
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
     guard let req = recognitionRequest else { return }
     req.shouldReportPartialResults = true
-
     recognitionTask = speechRecognizer?.recognitionTask(with: req) { [weak self] result, error in
       guard let self = self else { return }
       if let result = result {
@@ -291,7 +274,7 @@ private func reproducirPitido() {
     }
   }
 
- private func terminarConversacion() {
+  private func terminarConversacion() {
     envioTimer?.invalidate()
     conversacionTimer?.invalidate()
     grabandoRespuesta = false
@@ -300,7 +283,7 @@ private func reproducirPitido() {
     reproducirPitido()
     onEstado("Conversacion terminada")
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciarEscuchaBID() }
-}
+  }
 
   private func pararYEnviar() {
     guard grabandoRespuesta else { return }
@@ -359,6 +342,7 @@ class WearablesViewModel: ObservableObject {
   @Published var pantallEncendida: Bool = true
   @Published var teslaBluetoothConectado: Bool = false
   static weak var instancia: WearablesViewModel?
+
   private var registrationTask: Task<Void, Never>?
   private var deviceStreamTask: Task<Void, Never>?
   private var setupDeviceStreamTask: Task<Void, Never>?
@@ -368,7 +352,6 @@ class WearablesViewModel: ObservableObject {
   var streamVM: StreamSessionViewModel
   var ultimaLat: Double = 0
   var ultimaLon: Double = 0
-  
 
   init(wearables: WearablesInterface) {
     self.wearables = wearables
@@ -402,11 +385,8 @@ class WearablesViewModel: ObservableObject {
         bidStatus = "Error: \(error.localizedDescription)"
       }
     }
+  }
 
-    // Bluetooth para detectar Tesla
-      }
-
-  
   deinit {
     registrationTask?.cancel()
     deviceStreamTask?.cancel()
@@ -432,15 +412,13 @@ class WearablesViewModel: ObservableObject {
     }
   }
 
- 
-func pantallaEncendida() {
+  func pantallaEncendida() {
     pantallEncendida = true
     bidActivadoManual = false
     BidEscuchaManager.instancia?.pausadoPorSistema = false
     actualizarEstadoBid()
-}
+  }
 
-  func pantallaApagada() {
   func pantallaApagada() {
     pantallEncendida = false
     actualizarEstadoBid()
@@ -451,9 +429,6 @@ func pantallaEncendida() {
     bgTaskPermanente = UIApplication.shared.beginBackgroundTask {
       UIApplication.shared.endBackgroundTask(bgTaskPermanente)
       bgTaskPermanente = UIApplication.shared.beginBackgroundTask { }
-    }
-    if streamVM == nil {
-      streamVM = StreamSessionViewModel(wearables: wearables)
     }
     guard bidEscucha == nil else { return }
     bidEscucha = BidEscuchaManager { [weak self] estado in
@@ -468,7 +443,7 @@ func pantallaEncendida() {
         self.bidStatus = "Tu: \(texto)"
         BidEscuchaManager.instancia?.pausarConversacionTimer()
       }
-      let vm = self.streamVM ?? StreamSessionViewModel(wearables: self.wearables)
+      let vm = self.streamVM
       await vm.enviarMensajeABid(mensaje: texto, lat: self.ultimaLat, lon: self.ultimaLon)
       if vm.respuestaParaFoto {
         await vm.handleStartStreaming()
@@ -503,6 +478,11 @@ func pantallaEncendida() {
       while true {
         try? await Task.sleep(nanoseconds: 5_000_000_000)
         await comprobarVozPendiente()
+        await MainActor.run {
+          if self.bidDebeEstarActivo && BidEscuchaManager.instancia?.pausadoPorSistema == true {
+            BidEscuchaManager.instancia?.reanudarPorSistema()
+          }
+        }
       }
     }
 
@@ -513,27 +493,22 @@ func pantallaEncendida() {
       await comprobarVozPendiente()
     }
 
-    // Observar pantalla encendida/apagada
-    
     NotificationCenter.default.addObserver(
-    forName: UIApplication.didBecomeActiveNotification,
-    object: nil,
-    queue: .main
-) { [weak self] _ in
-    Task { @MainActor in self?.pantallaEncendida() }
-}
-NotificationCenter.default.addObserver(
-    forName: UIApplication.protectedDataWillBecomeUnavailableNotification,
-    object: nil,
-    queue: .main
-) { [weak self] _ in
-    Task { @MainActor in self?.pantallaApagada() }
-}
+      forName: UIApplication.didBecomeActiveNotification,
+      object: nil,
+      queue: .main
+    ) { [weak self] _ in
+      Task { @MainActor in self?.pantallaEncendida() }
+    }
+    NotificationCenter.default.addObserver(
+      forName: UIApplication.protectedDataWillBecomeUnavailableNotification,
+      object: nil,
+      queue: .main
+    ) { [weak self] _ in
+      Task { @MainActor in self?.pantallaApagada() }
+    }
 
-    // Bluetooth
     configurarBluetooth()
-
-    // Estado inicial — pantalla encendida al arrancar
     actualizarEstadoBid()
   }
 
@@ -633,6 +608,7 @@ NotificationCenter.default.addObserver(
   func dismissError() {
     showError = false
   }
+
   func configurarBluetooth() {
     BluetoothMonitor.shared.onTeslaConectado = { [weak self] conectado in
       Task { @MainActor in
@@ -641,7 +617,8 @@ NotificationCenter.default.addObserver(
       }
     }
     BluetoothMonitor.shared.iniciar()
- }
+  }
+}
 
 class BluetoothMonitor: NSObject, CBCentralManagerDelegate {
   static let shared = BluetoothMonitor()
@@ -669,4 +646,3 @@ class BluetoothMonitor: NSObject, CBCentralManagerDelegate {
     }
   }
 }
-
