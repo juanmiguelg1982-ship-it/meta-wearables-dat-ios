@@ -1339,22 +1339,21 @@ struct WebTabView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(Color(red: 0.01, green: 0.05, blue: 0.1))
+.padding(.vertical, 12)
+.background(Color(red: 0.01, green: 0.05, blue: 0.1))
 
-                if let url = webViewUrl {
+if let url = webViewUrl {
     BidWebKitView(url: url)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea(edges: .bottom)
-}
-                } else {
-                    // Pantalla vacía con input manual
-                    Spacer()
-                    VStack(spacing: 20) {
-                        Image(systemName: "globe")
-                            .font(.system(size: 50))
-                            .foregroundColor(cyan.opacity(0.3))
-                        Text("Bid abrirá páginas aquí")
+} else {
+    // Pantalla vacía con input manual
+    Spacer()
+    VStack(spacing: 20) {
+        Image(systemName: "globe")
+            .font(.system(size: 50))
+            .foregroundColor(cyan.opacity(0.3))
+        Text("Bid abrirá páginas aquí")
                             .font(.system(size: 13, design: .monospaced))
                             .foregroundColor(cyan.opacity(0.3))
 
