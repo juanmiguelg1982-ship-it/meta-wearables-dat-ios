@@ -1373,7 +1373,14 @@ struct WebTabView: View {
                 webViewUrl = url
             }
         }
-        .onAppear { vm.comprobarUrl() }
+        .onAppear {
+    vm.comprobarUrl()
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        if !vm.urlActual.isEmpty, let url = URL(string: vm.urlActual) {
+            webViewUrl = url
+        }
+    }
+}
     }
 }
 
