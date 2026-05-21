@@ -120,19 +120,18 @@ func reanudarPorTesla() {
           let tipoValor = info[AVAudioSessionInterruptionTypeKey] as? UInt,
           let tipo = AVAudioSession.InterruptionType(rawValue: tipoValor) else { return }
     if tipo == .began {
-    pararEngine()
-    try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-}
+        pararEngine()
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     } else if tipo == .ended {
-    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-        guard !self.pausadoPorSistema else { return }
-        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-        try? AVAudioSession.sharedInstance().setActive(true)
-        if self.enConversacion { self.iniciarEscuchaPregunta() }
-        else { self.iniciarEscuchaBID() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            guard !self.pausadoPorSistema else { return }
+            try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+            try? AVAudioSession.sharedInstance().setActive(true)
+            if self.enConversacion { self.iniciarEscuchaPregunta() }
+            else { self.iniciarEscuchaBID() }
+        }
     }
 }
-  }
 
   @objc private func rutaAudioCambio(_ notification: Notification) {
     let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
