@@ -163,7 +163,7 @@ func reanudarPorTesla() {
     }
   }
 
-  private func iniciarEscuchaBID() {
+    func iniciarEscuchaBID() {
     guard !pausadoPorSistema else { return }
     let msg = "engine:\(audioEngine.isRunning) conv:\(enConversacion) grab:\(grabandoRespuesta)"
     let msgEnc = msg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? msg
