@@ -1297,7 +1297,7 @@ class WebViewModel: ObservableObject {
 }
 
 struct WebTabView: View {
-    @StateObject private var vm = WebViewModel.shared
+    @ObservedObject private var vm = WebViewModel.shared
     @State private var urlInput: String = ""
     @State private var webViewUrl: URL? = nil
     let cyan = Color(red: 0, green: 0.71, blue: 0.85)
