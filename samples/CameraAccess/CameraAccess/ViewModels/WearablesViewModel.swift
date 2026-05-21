@@ -25,6 +25,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private var vigilanteTask: Task<Void, Never>?
   private var escuchandoOk = false
   var pausadoPorSistema = false
+  private var gestionandoCambioTesla = false
   var engineActivo: Bool { audioEngine.isRunning }
   
   static var instancia: BidEscuchaManager?
@@ -72,10 +73,15 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 }
 
 func pausarPorTesla() {
+    guard !pausadoPorSistema, !gestionandoCambioTesla else { return }
+    gestionandoCambioTesla = true
     pausadoPorSistema = true
     pararEngine()
     try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     onEstado("⏸ Bid pausado (Tesla)")
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        self.gestionandoCambioTesla = false
+    }
 }
 
 func reanudarPorTesla() {
