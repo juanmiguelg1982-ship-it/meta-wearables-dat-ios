@@ -67,11 +67,13 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     onEstado("⏸ Bid pausado")
   }
 
-  func reanudarPorSistema() {
+ func reanudarPorSistema() {
     guard pausadoPorSistema else { return }
     pausadoPorSistema = false
-    reanudar()
-  }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        self.reanudar()
+    }
+}
 
   func pausar() {
     guard !escuchandoOk else { return }
@@ -282,8 +284,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     pararEngine()
     reproducirPitido()
     onEstado("Conversacion terminada")
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciarEscuchaBID() }
-  }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self.iniciarEscuchaBID() }
+}
 
   private func pararYEnviar() {
     guard grabandoRespuesta else { return }
