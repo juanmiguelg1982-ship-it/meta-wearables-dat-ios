@@ -222,9 +222,9 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     guard !grabandoRespuesta, !pausadoPorSistema else { return }
     try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
     try? AVAudioSession.sharedInstance().setActive(true)
-    if enConversacion { iniciarEscuchaPregunta() }
-    else { iniciarEscuchaBID() }
-  }
+    enConversacion = false
+    iniciarEscuchaBID()
+}
 
   private func iniciarEscuchaPregunta() {
     grabandoRespuesta = true
