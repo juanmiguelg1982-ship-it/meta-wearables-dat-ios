@@ -540,7 +540,9 @@ class WearablesViewModel: ObservableObject {
     }
 
     configurarBluetooth()
-    actualizarEstadoBid()
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+    self?.actualizarEstadoBid()
+}
   }
 
   func comprobarVozPendiente() async {
