@@ -415,10 +415,10 @@ class WearablesViewModel: ObservableObject {
   }
 
   var bidDebeEstarActivo: Bool {
-    if teslaBluetoothConectado { return false }
+    if teslaBluetoothConectado && !bidActivadoManual { return false }
     if !pantallEncendida { return true }
     return bidActivadoManual
-  }
+}
 
   func toggleBidManual() {
     bidActivadoManual.toggle()
