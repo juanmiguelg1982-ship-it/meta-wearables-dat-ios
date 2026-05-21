@@ -60,15 +60,18 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
   }
 
+  func pausarPorSistema() {
+    guard !pausadoPorSistema else { return }
+    pausadoPorSistema = true
+    pararEngine()
+    onEstado("⏸ Bid pausado")
   }
 
- func reanudarPorSistema() {
+  func reanudarPorSistema() {
     guard pausadoPorSistema else { return }
     pausadoPorSistema = false
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-        self.reanudar()
-    }
-}
+    reanudar()
+  }
 
   func pausar() {
     guard !escuchandoOk else { return }
@@ -214,17 +217,18 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     enConversacion = true
     vigilanteTask?.cancel()
     reproducirPitido()
-    pararEngine()
-    iniciarEscuchaPregunta()
-  }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        self.iniciarEscuchaPregunta()
+    }
+}
 
   func reanudar() {
     guard !grabandoRespuesta, !pausadoPorSistema else { return }
     try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
     try? AVAudioSession.sharedInstance().setActive(true)
-    enConversacion = false
-    iniciarEscuchaBID()
-}
+    if enConversacion { iniciarEscuchaPregunta() }
+    else { iniciarEscuchaBID() }
+  }
 
   private func iniciarEscuchaPregunta() {
     grabandoRespuesta = true
@@ -279,8 +283,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     pararEngine()
     reproducirPitido()
     onEstado("Conversacion terminada")
-    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self.iniciarEscuchaBID() }
-}
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciarEscuchaBID() }
+  }
 
   private func pararYEnviar() {
     guard grabandoRespuesta else { return }
@@ -322,7 +326,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         try audioEngine.start()
       } catch {
         audioEngine.inputNode.removeTap(onBus: 0)
-          }
+      }
+    }
   }
 }
 
