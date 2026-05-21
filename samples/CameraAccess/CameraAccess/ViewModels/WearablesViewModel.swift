@@ -636,8 +636,7 @@ NotificationCenter.default.addObserver(
     }
     BluetoothMonitor.shared.iniciar()
   }
-   }
-  class BluetoothMonitor: NSObject, CBCentralManagerDelegate {
+     class BluetoothMonitor: NSObject, CBCentralManagerDelegate {
   static let shared = BluetoothMonitor()
   var onTeslaConectado: ((Bool) -> Void)?
   private var central: CBCentralManager?
