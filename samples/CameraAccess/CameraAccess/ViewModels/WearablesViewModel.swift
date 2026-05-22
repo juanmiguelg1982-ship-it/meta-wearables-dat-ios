@@ -587,7 +587,7 @@ class WearablesViewModel: ObservableObject {
       try? await Task.sleep(nanoseconds: 3_000_000_000)
       await comprobarVozPendiente()
     }
-
+ }
    
   func comprobarVozPendiente() async {
     guard let url = URL(string: "https://bidjuanmi.com/bid-voz-pendiente") else { return }
