@@ -53,8 +53,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 
   func arrancar() {
     try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-    try? AVAudioSession.sharedInstance().setActive(true)    
-    NotificationCenter.default.addObserver(self, selector: #selector(manejarInterrupcionAudio), name: AVAudioSession.interruptionNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(manejarInterrupcionAudio), name: AVAudioSession.interruptionNotification, object: nil)
     NotificationCenter.default.addObserver(self, selector: #selector(rutaAudioCambio), name: AVAudioSession.routeChangeNotification, object: nil)
     SFSpeechRecognizer.requestAuthorization { [weak self] status in
       guard status == .authorized else { return }
