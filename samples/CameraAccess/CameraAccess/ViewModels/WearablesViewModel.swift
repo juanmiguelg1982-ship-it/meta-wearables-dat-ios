@@ -76,7 +76,7 @@ func pausarPorTesla() {
     guard !pausadoPorSistema else { return }
     pausadoPorSistema = true
     pararEngine()
-    try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
+    try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
     try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     onEstado("⏸ Bid pausado (Tesla)")
 }
@@ -666,44 +666,32 @@ class WearablesViewModel: ObservableObject {
 }
 
 class BluetoothMonitor: NSObject, CBCentralManagerDelegate {
-  static let shared = BluetoothMonitor()
-  var onTeslaConectado: ((Bool) -> Void)?
-  private var central: CBCentralManager?
-  private let teslaNames = ["Model 3", "Tesla", "MODEL 3", "BID"]
-  private var teslaDetectadoTimer: Timer?
+    static let shared = BluetoothMonitor()
+    var onTeslaConectado: ((Bool) -> Void)?
+    private var central: CBCentralManager?
+    private var bidVisto: Bool = false
+    private var timerDesconexion: Timer?
 
-  func iniciar() {
-    central = CBCentralManager(delegate: self, queue: nil)
-  }
-
-  func centralManagerDidUpdateState(_ central: CBCentralManager) {
-    if central.state == .poweredOn {
-      central.scanForPeripherals(withServices: nil, options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
+    func iniciar() {
+        central = CBCentralManager(delegate: self, queue: nil)
     }
-  }
 
-  func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
-    let nombre = peripheral.name ?? ""
-    if nombre == "BID" {
-        onTeslaConectado?(true)
-        teslaDetectadoTimer?.invalidate()
-        teslaDetectadoTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
+    func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        if central.state == .poweredOn {
+            central.scanForPeripherals(withServices: nil, options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
+        }
+    }
+
+    func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
+        guard peripheral.name == "BID" else { return }
+        if !bidVisto {
+            bidVisto = true
+            onTeslaConectado?(true)
+        }
+        timerDesconexion?.invalidate()
+        timerDesconexion = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: false) { [weak self] _ in
+            self?.bidVisto = false
             self?.onTeslaConectado?(false)
         }
     }
-}
-
-  func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
-    let nombre = peripheral.name ?? ""
-    if teslaNames.contains(where: { nombre.contains($0) }) {
-      onTeslaConectado?(true)
-    }
-  }
-
-  func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
-    let nombre = peripheral.name ?? ""
-    if teslaNames.contains(where: { nombre.contains($0) }) {
-      onTeslaConectado?(false)
-    }
-  }
 }
