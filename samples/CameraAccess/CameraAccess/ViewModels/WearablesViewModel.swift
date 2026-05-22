@@ -138,18 +138,20 @@ func reanudarPorTesla() {
   @objc private func rutaAudioCambio(_ notification: Notification) {
     let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
     let hayTesla = outputs.contains { output in
-      let nombre = output.portName.lowercased()
-      return nombre.contains("tesla") || nombre.contains("model 3") || nombre.contains("model s") || nombre.contains("model x")
+        let nombre = output.portName.lowercased()
+        return nombre.contains("tesla") || nombre.contains("model 3") || nombre.contains("model s") || nombre.contains("model x")
     }
     DispatchQueue.main.async {
-    let yaConectado = WearablesViewModel.instancia?.teslaBluetoothConectado ?? false
-    guard hayTesla != yaConectado else { return }
-    if hayTesla {
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        let yaConectado = WearablesViewModel.instancia?.teslaBluetoothConectado ?? false
+        guard hayTesla != yaConectado else { return }
+        WearablesViewModel.instancia?.teslaBluetoothConectado = hayTesla
+        if hayTesla {
+            BidEscuchaManager.instancia?.pausarPorTesla()
+        } else {
+            BidEscuchaManager.instancia?.reanudarPorTesla()
+        }
+        WearablesViewModel.instancia?.actualizarEstadoBid()
     }
-    WearablesViewModel.instancia?.teslaBluetoothConectado = hayTesla
-    WearablesViewModel.instancia?.actualizarEstadoBid()
-}
 }
 
   private func arrancarVigilante() {
