@@ -76,6 +76,7 @@ func pausarPorTesla() {
     guard !pausadoPorSistema else { return }
     pausadoPorSistema = true
     pararEngine()
+    try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     onEstado("⏸ Bid pausado (Tesla)")
 }
 
