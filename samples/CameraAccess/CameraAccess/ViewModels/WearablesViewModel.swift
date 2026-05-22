@@ -664,17 +664,28 @@ class BluetoothMonitor: NSObject, CBCentralManagerDelegate {
   var onTeslaConectado: ((Bool) -> Void)?
   private var central: CBCentralManager?
   private let teslaNames = ["Model 3", "Tesla", "MODEL 3"]
+  private var teslaDetectadoTimer: Timer?
 
   func iniciar() {
     central = CBCentralManager(delegate: self, queue: nil)
-}
+  }
 
-func centralManagerDidUpdateState(_ central: CBCentralManager) {
+  func centralManagerDidUpdateState(_ central: CBCentralManager) {
     if central.state == .poweredOn {
-        central.scanForPeripherals(withServices: nil, options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
+      central.scanForPeripherals(withServices: nil, options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
     }
-}
-  func centralManagerDidUpdateState(_ central: CBCentralManager) {}
+  }
+
+  func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
+    let nombre = peripheral.name ?? ""
+    if teslaNames.contains(where: { nombre.contains($0) }) {
+      onTeslaConectado?(true)
+      teslaDetectadoTimer?.invalidate()
+      teslaDetectadoTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
+        self?.onTeslaConectado?(false)
+      }
+    }
+  }
 
   func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
     let nombre = peripheral.name ?? ""
@@ -682,12 +693,7 @@ func centralManagerDidUpdateState(_ central: CBCentralManager) {
       onTeslaConectado?(true)
     }
   }
-func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
-    let nombre = peripheral.name ?? ""
-    if teslaNames.contains(where: { nombre.contains($0) }) {
-        onTeslaConectado?(true)
-    }
-}
+
   func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
     let nombre = peripheral.name ?? ""
     if teslaNames.contains(where: { nombre.contains($0) }) {
