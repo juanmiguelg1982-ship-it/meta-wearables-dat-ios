@@ -172,7 +172,7 @@ func activarTodo() {
         guard hayTesla != yaConectado else { return }
         WearablesViewModel.instancia?.teslaBluetoothConectado = hayTesla
         if hayTesla {
-            BidEscuchaManager.instancia?.pausarPorTesla()
+            BidEscuchaManager.instancia?.desactivarTodo()
         } else {
             BidEscuchaManager.instancia?.reanudarPorTesla()
         }
