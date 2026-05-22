@@ -76,6 +76,7 @@ func pausarPorTesla() {
     guard !pausadoPorSistema else { return }
     pausadoPorSistema = true
     pararEngine()
+    try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
     try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     onEstado("⏸ Bid pausado (Tesla)")
 }
@@ -683,10 +684,7 @@ class BluetoothMonitor: NSObject, CBCentralManagerDelegate {
 
   func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
     let nombre = peripheral.name ?? ""
-    if teslaNames.contains(where: { nombre.contains($0) }) {
-        // Cerrar HFP inmediatamente para que el Tesla pueda conectar
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    if nombre == "BID" {
         onTeslaConectado?(true)
         teslaDetectadoTimer?.invalidate()
         teslaDetectadoTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
