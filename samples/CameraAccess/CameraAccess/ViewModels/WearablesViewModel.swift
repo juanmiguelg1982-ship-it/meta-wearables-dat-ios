@@ -89,6 +89,31 @@ func reanudarPorTesla() {
     try? AVAudioSession.sharedInstance().setActive(true)
     reanudar()
 }
+  func desactivarTodo() {
+    pausadoPorSistema = true
+    enConversacion = false
+    grabandoRespuesta = false
+    vigilanteTask?.cancel()
+    envioTimer?.invalidate()
+    conversacionTimer?.invalidate()
+    silenceTimer?.invalidate()
+    recognitionTask?.cancel()
+    recognitionTask = nil
+    recognitionRequest?.endAudio()
+    recognitionRequest = nil
+    if audioEngine.isRunning {
+        audioEngine.inputNode.removeTap(onBus: 0)
+        audioEngine.stop()
+    }
+    try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [])
+    try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    onEstado("⏸ Bid desactivado (Tesla)")
+}
+
+func activarTodo() {
+    pausadoPorSistema = false
+    iniciarEscuchaBID()
+}
   func reanudarPorSistema() {
     guard pausadoPorSistema else { return }
     pausadoPorSistema = false
@@ -444,11 +469,11 @@ class WearablesViewModel: ObservableObject {
 }
 
   func actualizarEstadoBid() {
-    if bidDebeEstarActivo {
-        BidEscuchaManager.instancia?.reanudarPorSistema()
+    if teslaBluetoothConectado {
+        BidEscuchaManager.instancia?.desactivarTodo()
     } else {
-        if teslaBluetoothConectado {
-            BidEscuchaManager.instancia?.pausarPorTesla()
+        if bidDebeEstarActivo {
+            BidEscuchaManager.instancia?.activarTodo()
         } else {
             BidEscuchaManager.instancia?.pausarPorSistema()
         }
