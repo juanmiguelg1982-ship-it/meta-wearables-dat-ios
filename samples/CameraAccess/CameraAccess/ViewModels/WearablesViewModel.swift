@@ -684,13 +684,16 @@ class BluetoothMonitor: NSObject, CBCentralManagerDelegate {
   func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
     let nombre = peripheral.name ?? ""
     if teslaNames.contains(where: { nombre.contains($0) }) {
-      onTeslaConectado?(true)
-      teslaDetectadoTimer?.invalidate()
-      teslaDetectadoTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
-        self?.onTeslaConectado?(false)
-      }
+        // Cerrar HFP inmediatamente para que el Tesla pueda conectar
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        onTeslaConectado?(true)
+        teslaDetectadoTimer?.invalidate()
+        teslaDetectadoTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
+            self?.onTeslaConectado?(false)
+        }
     }
-  }
+}
 
   func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
     let nombre = peripheral.name ?? ""
