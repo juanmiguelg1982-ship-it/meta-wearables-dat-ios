@@ -25,6 +25,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private var vigilanteTask: Task<Void, Never>?
   private var escuchandoOk = false
   var pausadoPorSistema = false
+  private var teslaModoActivo = false
   private var gestionandoCambioTesla = false
   var engineActivo: Bool { audioEngine.isRunning }
   
@@ -178,12 +179,14 @@ for output in allOutputs {
         let yaConectado = WearablesViewModel.instancia?.teslaBluetoothConectado ?? false
         guard hayTesla != yaConectado else { return }
         WearablesViewModel.instancia?.teslaBluetoothConectado = hayTesla
-        if hayTesla {
-            BidEscuchaManager.instancia?.desactivarTodo()
-        } else {
-            BidEscuchaManager.instancia?.reanudarPorTesla()
-        }
-        WearablesViewModel.instancia?.actualizarEstadoBid()
+        if hayTesla && !(BidEscuchaManager.instancia?.teslaModoActivo ?? false) {
+    BidEscuchaManager.instancia?.teslaModoActivo = true
+    BidEscuchaManager.instancia?.desactivarTodo()
+} else if !hayTesla && (BidEscuchaManager.instancia?.teslaModoActivo ?? false) {
+    BidEscuchaManager.instancia?.teslaModoActivo = false
+    BidEscuchaManager.instancia?.reanudarPorTesla()
+}
+WearablesViewModel.instancia?.actualizarEstadoBid()
     }
 }
 
