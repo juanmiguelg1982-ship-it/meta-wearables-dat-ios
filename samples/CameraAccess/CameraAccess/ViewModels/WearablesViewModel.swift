@@ -164,6 +164,11 @@ func activarTodo() {
 }
 
   @objc private func rutaAudioCambio(_ notification: Notification) {
+    let allOutputs = AVAudioSession.sharedInstance().currentRoute.outputs
+for output in allOutputs {
+    let msg = "RUTA:\(output.portName)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
+}
     let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
     let hayTesla = outputs.contains { output in
         let nombre = output.portName.lowercased()
