@@ -452,9 +452,8 @@ class WearablesViewModel: ObservableObject {
   func pantallaEncendida() {
     pantallEncendida = true
     bidActivadoManual = false
-    BidEscuchaManager.instancia?.pausadoPorSistema = false
     actualizarEstadoBid()
-  }
+}
 
   func pantallaApagada() {
     pantallEncendida = false
