@@ -142,11 +142,14 @@ func reanudarPorTesla() {
       return nombre.contains("tesla") || nombre.contains("model 3") || nombre.contains("model s") || nombre.contains("model x")
     }
     DispatchQueue.main.async {
-      let yaConectado = WearablesViewModel.instancia?.teslaBluetoothConectado ?? false
-      guard hayTesla != yaConectado else { return }
-      WearablesViewModel.instancia?.teslaBluetoothConectado = hayTesla
-      WearablesViewModel.instancia?.actualizarEstadoBid()
+    let yaConectado = WearablesViewModel.instancia?.teslaBluetoothConectado ?? false
+    guard hayTesla != yaConectado else { return }
+    if hayTesla {
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
+    WearablesViewModel.instancia?.teslaBluetoothConectado = hayTesla
+    WearablesViewModel.instancia?.actualizarEstadoBid()
+}
 }
 
   private func arrancarVigilante() {
