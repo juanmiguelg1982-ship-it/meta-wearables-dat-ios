@@ -25,7 +25,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private var vigilanteTask: Task<Void, Never>?
   private var escuchandoOk = false
   var pausadoPorSistema = false
-  private var teslaModoActivo = false
+  var teslaModoActivo = false
   private var gestionandoCambioTesla = false
   var engineActivo: Bool { audioEngine.isRunning }
   
@@ -84,11 +84,11 @@ func pausarPorTesla() {
 
 
 func reanudarPorTesla() {
-    guard pausadoPorSistema else { return }
+    teslaModoActivo = false
     pausadoPorSistema = false
     try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
     try? AVAudioSession.sharedInstance().setActive(true)
-    reanudar()
+    iniciarEscuchaBID()
 }
   func desactivarTodo() {
     pausadoPorSistema = true
