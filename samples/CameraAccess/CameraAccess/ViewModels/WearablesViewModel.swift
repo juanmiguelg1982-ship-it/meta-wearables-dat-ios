@@ -70,6 +70,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     envioTimer?.invalidate()
     enConversacion = false
     pararEngine()
+    try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [])
+    try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     onEstado("⏸ Bid pausado")
 }
 
