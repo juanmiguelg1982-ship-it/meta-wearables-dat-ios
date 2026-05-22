@@ -556,13 +556,8 @@ class WearablesViewModel: ObservableObject {
     }
 }
 
-    bidEscucha?.arrancar()
-
-    Task {
-      try? await Task.sleep(nanoseconds: 3_000_000_000)
-      await comprobarVozPendiente()
-    }
-
+    configurarBluetooth()
+    
     NotificationCenter.default.addObserver(
       forName: UIApplication.didBecomeActiveNotification,
       object: nil,
@@ -577,11 +572,23 @@ class WearablesViewModel: ObservableObject {
     ) { [weak self] _ in
       Task { @MainActor in self?.pantallaApagada() }
     }
+    
+    Task {
+      try? await Task.sleep(nanoseconds: 5_000_000_000)
+      await MainActor.run {
+        if !self.teslaBluetoothConectado {
+          self.bidEscucha?.arrancar()
+          self.actualizarEstadoBid()
+        }
+      }
+    }
+    
+    Task {
+      try? await Task.sleep(nanoseconds: 3_000_000_000)
+      await comprobarVozPendiente()
+    }
 
-    configurarBluetooth()
-   actualizarEstadoBid()
-  }
-
+   
   func comprobarVozPendiente() async {
     guard let url = URL(string: "https://bidjuanmi.com/bid-voz-pendiente") else { return }
     do {
