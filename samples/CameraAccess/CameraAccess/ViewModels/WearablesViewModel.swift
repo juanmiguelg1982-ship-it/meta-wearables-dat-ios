@@ -546,9 +546,12 @@ class WearablesViewModel: ObservableObject {
         try? await Task.sleep(nanoseconds: 5_000_000_000)
         await comprobarVozPendiente()
         await MainActor.run {
-            if self.bidDebeEstarActivo && BidEscuchaManager.instancia?.pausadoPorSistema == true {
-                BidEscuchaManager.instancia?.reanudarPorSistema()
-            }
+            if self.bidDebeEstarActivo && !self.teslaBluetoothConectado && BidEscuchaManager.instancia?.pausadoPorSistema == true {
+    BidEscuchaManager.instancia?.reanudarPorSistema()
+}
+if self.bidDebeEstarActivo && !self.teslaBluetoothConectado && BidEscuchaManager.instancia?.pausadoPorSistema == false && BidEscuchaManager.instancia?.engineActivo == false {
+    BidEscuchaManager.instancia?.iniciarEscuchaBID()
+}
             if self.bidDebeEstarActivo && BidEscuchaManager.instancia?.pausadoPorSistema == false && BidEscuchaManager.instancia?.engineActivo == false {
                 BidEscuchaManager.instancia?.iniciarEscuchaBID()
             }
