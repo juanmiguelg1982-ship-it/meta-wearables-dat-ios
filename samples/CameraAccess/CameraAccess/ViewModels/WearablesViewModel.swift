@@ -663,7 +663,7 @@ class BluetoothMonitor: NSObject, CBCentralManagerDelegate {
   static let shared = BluetoothMonitor()
   var onTeslaConectado: ((Bool) -> Void)?
   private var central: CBCentralManager?
-  private let teslaNames = ["Model 3", "Tesla", "MODEL 3"]
+  private let teslaNames = ["Model 3", "Tesla", "MODEL 3", "BID"]
   private var teslaDetectadoTimer: Timer?
 
   func iniciar() {
