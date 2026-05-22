@@ -667,8 +667,13 @@ class BluetoothMonitor: NSObject, CBCentralManagerDelegate {
 
   func iniciar() {
     central = CBCentralManager(delegate: self, queue: nil)
-  }
+}
 
+func centralManagerDidUpdateState(_ central: CBCentralManager) {
+    if central.state == .poweredOn {
+        central.scanForPeripherals(withServices: nil, options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
+    }
+}
   func centralManagerDidUpdateState(_ central: CBCentralManager) {}
 
   func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
@@ -677,7 +682,12 @@ class BluetoothMonitor: NSObject, CBCentralManagerDelegate {
       onTeslaConectado?(true)
     }
   }
-
+func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
+    let nombre = peripheral.name ?? ""
+    if teslaNames.contains(where: { nombre.contains($0) }) {
+        onTeslaConectado?(true)
+    }
+}
   func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
     let nombre = peripheral.name ?? ""
     if teslaNames.contains(where: { nombre.contains($0) }) {
