@@ -112,6 +112,8 @@ func reanudarPorTesla() {
 
 func activarTodo() {
     pausadoPorSistema = false
+    try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+    try? AVAudioSession.sharedInstance().setActive(true)
     iniciarEscuchaBID()
 }
   func reanudarPorSistema() {
