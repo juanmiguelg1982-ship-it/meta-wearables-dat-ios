@@ -577,17 +577,16 @@ class WearablesViewModel: ObservableObject {
         configurarBluetooth()
 
         NotificationCenter.default.addObserver(
-            forName: UIApplication.didBecomeActiveNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
-                    appDelegate.activarSesionAudio()
-                }
-                self?.pantallaEncendida()
-            }
-        }
+    forName: UIApplication.didBecomeActiveNotification,
+    object: nil,
+    queue: .main
+) { [weak self] _ in
+    Task { @MainActor in
+        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(true)
+        self?.pantallaEncendida()
+    }
+}
 
         NotificationCenter.default.addObserver(
             forName: UIApplication.protectedDataWillBecomeUnavailableNotification,
