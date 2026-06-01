@@ -64,17 +64,14 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
 
     func pausarPorSistema() {
-        guard !pausadoPorSistema else { return }
-        pausadoPorSistema = true
-        conversacionTimer?.invalidate()
-        envioTimer?.invalidate()
-        enConversacion = false
-        pararEngine()
-        // Libera el control de volumen al iPhone cuando Bid está desactivado
-        try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [])
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        onEstado("⏸ Bid desactivado")
-    }
+    guard !pausadoPorSistema else { return }
+    pausadoPorSistema = true
+    conversacionTimer?.invalidate()
+    envioTimer?.invalidate()
+    enConversacion = false
+    pararEngine()
+    onEstado("⏸ Bid desactivado")
+}
 
     func pausarPorTesla() {
         guard !pausadoPorSistema else { return }
