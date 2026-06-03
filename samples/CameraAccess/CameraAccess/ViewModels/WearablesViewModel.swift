@@ -151,23 +151,22 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         arrancarEngine()
     }
 
-    @objc private func manejarInterrupcionAudio(_ notification: Notification) {
-        guard let info = notification.userInfo,
-              let tipoValor = info[AVAudioSessionInterruptionTypeKey] as? UInt,
-              let tipo = AVAudioSession.InterruptionType(rawValue: tipoValor) else { return }
-        if tipo == .began {
-            pararEngine()
-            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        } else if tipo == .ended {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                guard !self.pausadoPorSistema else { return }
-                try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-                try? AVAudioSession.sharedInstance().setActive(true)
-                if self.enConversacion { self.iniciarEscuchaPregunta() }
-                else { self.iniciarEscuchaBID() }
-            }
+   @objc private func manejarInterrupcionAudio(_ notification: Notification) {
+    guard let info = notification.userInfo,
+          let tipoValor = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+          let tipo = AVAudioSession.InterruptionType(rawValue: tipoValor) else { return }
+    if tipo == .began {
+        pararEngine()
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    } else if tipo == .ended {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+            try? AVAudioSession.sharedInstance().setActive(true)
+            if self.enConversacion { self.iniciarEscuchaPregunta() }
+            else { self.iniciarEscuchaBID() }
         }
     }
+}
 
     @objc private func rutaAudioCambio(_ notification: Notification) {
         let allOutputs = AVAudioSession.sharedInstance().currentRoute.outputs
@@ -767,17 +766,11 @@ class LlamadaMonitor: NSObject, CXCallObserverDelegate {
     }
     
     func callObserver(_ callObserver: CXCallObserver, callChanged call: CXCall) {
-    let msg = "llamada-hasEnded:\(call.hasEnded)-isOutgoing:\(call.isOutgoing)-isOnHold:\(call.isOnHold)-isConnected:\(call.isOutgoing)"
-    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")")!).resume()
-    
     if call.hasEnded {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             if WearablesViewModel.instancia?.bidDebeEstarActivo == true {
                 BidEscuchaManager.instancia?.activarTodo()
             }
         }
-    } else if !call.hasEnded && !call.isOutgoing && !call.isOnHold {
-        BidEscuchaManager.instancia?.desactivarTodo()
     }
-}
 }
