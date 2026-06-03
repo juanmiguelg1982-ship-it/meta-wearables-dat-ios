@@ -767,6 +767,9 @@ class LlamadaMonitor: NSObject, CXCallObserverDelegate {
     }
     
     func callObserver(_ callObserver: CXCallObserver, callChanged call: CXCall) {
+    let msg = "llamada-hasEnded:\(call.hasEnded)-isOutgoing:\(call.isOutgoing)-isOnHold:\(call.isOnHold)-isConnected:\(call.isOutgoing)"
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")")!).resume()
+    
     if call.hasEnded {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             if WearablesViewModel.instancia?.bidDebeEstarActivo == true {
