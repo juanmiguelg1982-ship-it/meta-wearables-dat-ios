@@ -29,7 +29,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     var teslaModoActivo = false
     private var gestionandoCambioTesla = false
     var engineActivo: Bool { audioEngine.isRunning }
-    private var callObserver = CXCallObserver()
+    
 
     static var instancia: BidEscuchaManager?
     static func pausarEngine() { instancia?.pausar() }
@@ -601,7 +601,7 @@ class WearablesViewModel: ObservableObject {
     }
 
     // Detectar llamadas entrantes y salientes
-    callObserver.setDelegate(self, queue: .main)
+    LlamadaMonitor.shared.iniciar()
 
     Task {
         try? await Task.sleep(nanoseconds: 5_000_000_000)
@@ -757,11 +757,18 @@ class BluetoothMonitor: NSObject, CBCentralManagerDelegate {
         }
     }
 }
-extension WearablesViewModel: CXCallObserverDelegate {
+class LlamadaMonitor: NSObject, CXCallObserverDelegate {
+    static let shared = LlamadaMonitor()
+    private let callObserver = CXCallObserver()
+    
+    func iniciar() {
+        callObserver.setDelegate(self, queue: .main)
+    }
+    
     func callObserver(_ callObserver: CXCallObserver, callChanged call: CXCall) {
         if call.hasEnded {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                if self.bidDebeEstarActivo {
+                if WearablesViewModel.instancia?.bidDebeEstarActivo == true {
                     BidEscuchaManager.instancia?.activarTodo()
                 }
             }
