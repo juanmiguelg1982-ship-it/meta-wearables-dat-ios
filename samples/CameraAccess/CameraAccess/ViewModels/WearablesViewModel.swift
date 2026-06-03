@@ -113,6 +113,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
 
     func activarTodo() {
+        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=activarTodo-llamado")!).resume()
         pausadoPorSistema = false
         try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
         try? AVAudioSession.sharedInstance().setActive(true)
@@ -766,14 +767,14 @@ class LlamadaMonitor: NSObject, CXCallObserverDelegate {
     }
     
     func callObserver(_ callObserver: CXCallObserver, callChanged call: CXCall) {
-        if call.hasEnded {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                if WearablesViewModel.instancia?.bidDebeEstarActivo == true {
-                    BidEscuchaManager.instancia?.activarTodo()
-                }
+    if call.hasEnded {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            if WearablesViewModel.instancia?.bidDebeEstarActivo == true {
+                BidEscuchaManager.instancia?.activarTodo()
             }
-        } else if !call.hasEnded && !call.isOutgoing {
-            BidEscuchaManager.instancia?.desactivarTodo()
         }
+    } else if !call.hasEnded && !call.isOutgoing && !call.isOnHold {
+        BidEscuchaManager.instancia?.desactivarTodo()
     }
+}
 }
