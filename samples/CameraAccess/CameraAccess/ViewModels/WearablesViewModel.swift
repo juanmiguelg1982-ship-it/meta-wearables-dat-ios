@@ -195,27 +195,26 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
 
     private func arrancarVigilante() {
-        vigilanteTask?.cancel()
-        ultimoResultado = Date()
-        vigilanteTask = Task { [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
-                guard let self = self, !self.enConversacion, !self.grabandoRespuesta else { continue }
-                if Date().timeIntervalSince(self.ultimoResultado) > 45 {
-    await MainActor.run {
-        // Recrear el recognizer pero solo si el engine no está corriendo bien
-        guard !self.audioEngine.isRunning else {
-            self.ultimoResultado = Date() // resetear el contador si el engine sigue vivo
-            return
-        }
-        self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
-        self.speechRecognizer?.delegate = self
-        self.iniciarEscuchaBID()
-    }
-}
+    vigilanteTask?.cancel()
+    ultimoResultado = Date()
+    vigilanteTask = Task { [weak self] in
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard let self = self, !self.enConversacion, !self.grabandoRespuesta else { continue }
+            if Date().timeIntervalSince(self.ultimoResultado) > 20 {
+                await MainActor.run {
+                    if !self.audioEngine.isRunning {
+                        self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
+                        self.speechRecognizer?.delegate = self
+                        self.iniciarEscuchaBID()
+                    } else {
+                        self.ultimoResultado = Date()
+                    }
+                }
             }
         }
     }
+}
 
     func iniciarEscuchaBID() {
         guard !pausadoPorSistema else { return }
