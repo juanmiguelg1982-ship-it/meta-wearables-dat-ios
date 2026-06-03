@@ -201,7 +201,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         while !Task.isCancelled {
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             guard let self = self, !self.enConversacion, !self.grabandoRespuesta else { continue }
-            if Date().timeIntervalSince(self.ultimoResultado) > 20 {
+            if Date().timeIntervalSince(self.ultimoResultado) > 6 {
                 await MainActor.run {
                     if !self.audioEngine.isRunning {
                         self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
