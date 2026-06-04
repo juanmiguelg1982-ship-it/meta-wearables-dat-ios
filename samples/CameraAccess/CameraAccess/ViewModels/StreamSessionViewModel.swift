@@ -299,14 +299,21 @@ final class StreamSessionViewModel: ObservableObject {
         }
       }
     } catch { return }
-    if textoCompleto.trimmingCharacters(in: .whitespacesAndNewlines) == "[FOTO]" {
-      respuestaParaFoto = true
-    } else {
-      respuestaParaFoto = false
-      if !textoCompleto.isEmpty {
+    let textoLimpio = textoCompleto.trimmingCharacters(in: .whitespacesAndNewlines)
+if textoLimpio == "[FOTO]" {
+    respuestaParaFoto = true
+} else if textoLimpio == "[LINTERNA_ON]" {
+    respuestaParaFoto = false
+    encenderLinterna(true)
+} else if textoLimpio == "[LINTERNA_OFF]" {
+    respuestaParaFoto = false
+    encenderLinterna(false)
+} else {
+    respuestaParaFoto = false
+    if !textoCompleto.isEmpty {
         await reproducirAudio(texto: textoCompleto)
-      }
     }
+}
   }
 
   func reproducirAudio(texto: String) async {
@@ -318,7 +325,13 @@ final class StreamSessionViewModel: ObservableObject {
       BidAudioPlayer.shared.play(data: data)
     } catch { return }
   }
-
+func encenderLinterna(_ encender: Bool) {
+    guard let device = AVCaptureDevice.default(for: .video),
+          device.hasTorch else { return }
+    try? device.lockForConfiguration()
+    device.torchMode = encender ? .on : .off
+    device.unlockForConfiguration()
+}
   func showErrorMsg(_ message: String) {
     errorMessage = message
     showError = true
