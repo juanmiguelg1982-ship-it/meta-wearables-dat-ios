@@ -771,6 +771,10 @@ class LlamadaMonitor: NSObject, CXCallObserverDelegate {
                 BidEscuchaManager.instancia?.activarTodo()
             }
         }
+    } else if !call.hasEnded && !call.isOnHold {
+        BidEscuchaManager.instancia?.desactivarTodo()
     }
 }
-}
+    }
+
+
