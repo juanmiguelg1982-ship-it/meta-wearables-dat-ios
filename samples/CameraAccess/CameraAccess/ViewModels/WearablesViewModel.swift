@@ -493,16 +493,17 @@ class WearablesViewModel: ObservableObject {
     }
 
     func actualizarEstadoBid() {
-        if teslaBluetoothConectado {
-            BidEscuchaManager.instancia?.desactivarTodo()
+    if teslaBluetoothConectado {
+        BidEscuchaManager.instancia?.desactivarTodo()
+    } else {
+        if bidDebeEstarActivo {
+            BidEscuchaManager.instancia?.pausadoPorSistema = false
+            BidEscuchaManager.instancia?.activarTodo()
         } else {
-            if bidDebeEstarActivo {
-                BidEscuchaManager.instancia?.activarTodo()
-            } else {
-                BidEscuchaManager.instancia?.pausarPorSistema()
-            }
+            BidEscuchaManager.instancia?.pausarPorSistema()
         }
     }
+}
 
     func pantallaEncendida() {
         pantallEncendida = true
