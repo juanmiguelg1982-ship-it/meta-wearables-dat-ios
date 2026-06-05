@@ -393,7 +393,14 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 }
 
     private func arrancarEngine() {
-    try? AVAudioSession.sharedInstance().setActive(true)
+    do {
+        try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+        try AVAudioSession.sharedInstance().setActive(true)
+    } catch {
+        let msg = "arrancarEngine-sesion-ERROR:\(error.localizedDescription)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
+        return
+    }
     let inputNode = audioEngine.inputNode
     let formato = inputNode.outputFormat(forBus: 0)
     guard formato.sampleRate > 0 else {
