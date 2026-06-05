@@ -152,21 +152,23 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
 
     @objc private func manejarInterrupcionAudio(_ notification: Notification) {
-        guard let info = notification.userInfo,
-              let tipoValor = info[AVAudioSessionInterruptionTypeKey] as? UInt,
-              let tipo = AVAudioSession.InterruptionType(rawValue: tipoValor) else { return }
-        if tipo == .began {
-            pararEngine()
-            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        } else if tipo == .ended {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-                try? AVAudioSession.sharedInstance().setActive(true)
-                if self.enConversacion { self.iniciarEscuchaPregunta() }
-                else { self.iniciarEscuchaBID() }
-            }
+    guard let info = notification.userInfo,
+          let tipoValor = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+          let tipo = AVAudioSession.InterruptionType(rawValue: tipoValor) else { return }
+    if tipo == .began {
+        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=llamada:inicio")!).resume()
+        pararEngine()
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    } else if tipo == .ended {
+        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=llamada:fin")!).resume()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+            try? AVAudioSession.sharedInstance().setActive(true)
+            if self.enConversacion { self.iniciarEscuchaPregunta() }
+            else { self.iniciarEscuchaBID() }
         }
     }
+}
 
     @objc private func rutaAudioCambio(_ notification: Notification) {
         let allOutputs = AVAudioSession.sharedInstance().currentRoute.outputs
