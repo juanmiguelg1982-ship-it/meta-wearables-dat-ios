@@ -511,9 +511,11 @@ class WearablesViewModel: ObservableObject {
     }
 
     func pantallaApagada() {
-        pantallEncendida = false
-        actualizarEstadoBid()
-    }
+    pantallEncendida = false
+    let msg = "pantallaApagada-pausado:\(BidEscuchaManager.instancia?.pausadoPorSistema ?? false)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
+    actualizarEstadoBid()
+}
 
     func comprobarReactivar() async {
         guard let url = URL(string: "https://bidjuanmi.com/bid-reactivar") else { return }
