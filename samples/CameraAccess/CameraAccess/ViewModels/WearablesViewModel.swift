@@ -66,14 +66,14 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
 
     func pausarPorSistema() {
-    guard !pausadoPorSistema else { return }
-    pausadoPorSistema = true
-    conversacionTimer?.invalidate()
-    envioTimer?.invalidate()
-    enConversacion = false
-    pararEngine()
-    onEstado("⏸ Bid desactivado")
-}
+        guard !pausadoPorSistema else { return }
+        pausadoPorSistema = true
+        conversacionTimer?.invalidate()
+        envioTimer?.invalidate()
+        enConversacion = false
+        pararEngine()
+        onEstado("⏸ Bid desactivado")
+    }
 
     func pausarPorTesla() {
         guard !pausadoPorSistema else { return }
@@ -151,22 +151,22 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         arrancarEngine()
     }
 
-   @objc private func manejarInterrupcionAudio(_ notification: Notification) {
-    guard let info = notification.userInfo,
-          let tipoValor = info[AVAudioSessionInterruptionTypeKey] as? UInt,
-          let tipo = AVAudioSession.InterruptionType(rawValue: tipoValor) else { return }
-    if tipo == .began {
-        pararEngine()
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-    } else if tipo == .ended {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-            try? AVAudioSession.sharedInstance().setActive(true)
-            if self.enConversacion { self.iniciarEscuchaPregunta() }
-            else { self.iniciarEscuchaBID() }
+    @objc private func manejarInterrupcionAudio(_ notification: Notification) {
+        guard let info = notification.userInfo,
+              let tipoValor = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let tipo = AVAudioSession.InterruptionType(rawValue: tipoValor) else { return }
+        if tipo == .began {
+            pararEngine()
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        } else if tipo == .ended {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+                try? AVAudioSession.sharedInstance().setActive(true)
+                if self.enConversacion { self.iniciarEscuchaPregunta() }
+                else { self.iniciarEscuchaBID() }
+            }
         }
     }
-}
 
     @objc private func rutaAudioCambio(_ notification: Notification) {
         let allOutputs = AVAudioSession.sharedInstance().currentRoute.outputs
@@ -195,26 +195,26 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
 
     private func arrancarVigilante() {
-    vigilanteTask?.cancel()
-    ultimoResultado = Date()
-    vigilanteTask = Task { [weak self] in
-        while !Task.isCancelled {
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            guard let self = self, !self.enConversacion, !self.grabandoRespuesta else { continue }
-            if Date().timeIntervalSince(self.ultimoResultado) > 6 {
-                await MainActor.run {
-                    if !self.audioEngine.isRunning {
-                        self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
-                        self.speechRecognizer?.delegate = self
-                        self.iniciarEscuchaBID()
-                    } else {
-                        self.ultimoResultado = Date()
+        vigilanteTask?.cancel()
+        ultimoResultado = Date()
+        vigilanteTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                guard let self = self, !self.enConversacion, !self.grabandoRespuesta else { continue }
+                if Date().timeIntervalSince(self.ultimoResultado) > 6 {
+                    await MainActor.run {
+                        if !self.audioEngine.isRunning {
+                            self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
+                            self.speechRecognizer?.delegate = self
+                            self.iniciarEscuchaBID()
+                        } else {
+                            self.ultimoResultado = Date()
+                        }
                     }
                 }
             }
         }
     }
-}
 
     func iniciarEscuchaBID() {
         guard !pausadoPorSistema else { return }
@@ -510,113 +510,127 @@ class WearablesViewModel: ObservableObject {
         actualizarEstadoBid()
     }
 
-    func arrancarEscucha() {
-    var bgTaskPermanente: UIBackgroundTaskIdentifier = .invalid
-    bgTaskPermanente = UIApplication.shared.beginBackgroundTask(withName: "BidEscucha") {
-        UIApplication.shared.endBackgroundTask(bgTaskPermanente)
-        bgTaskPermanente = UIApplication.shared.beginBackgroundTask(withName: "BidEscuchaRenovado") { }
+    func comprobarReactivar() async {
+        guard let url = URL(string: "https://bidjuanmi.com/bid-reactivar") else { return }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let reactivar = json["reactivar"] as? Bool,
+                  reactivar else { return }
+            await MainActor.run {
+                guard self.bidDebeEstarActivo && !self.teslaBluetoothConectado else { return }
+                BidEscuchaManager.instancia?.activarTodo()
+            }
+        } catch {}
     }
 
-    guard bidEscucha == nil else { return }
-    bidEscucha = BidEscuchaManager { [weak self] estado in
-        Task { @MainActor in self?.bidStatus = estado }
-    } onPregunta: { [weak self] (texto: String) in
-        guard let self = self else { return }
-        var bgTask: UIBackgroundTaskIdentifier = .invalid
-        bgTask = UIApplication.shared.beginBackgroundTask {
+    func arrancarEscucha() {
+        var bgTaskPermanente: UIBackgroundTaskIdentifier = .invalid
+        bgTaskPermanente = UIApplication.shared.beginBackgroundTask(withName: "BidEscucha") {
+            UIApplication.shared.endBackgroundTask(bgTaskPermanente)
+            bgTaskPermanente = UIApplication.shared.beginBackgroundTask(withName: "BidEscuchaRenovado") { }
+        }
+
+        guard bidEscucha == nil else { return }
+        bidEscucha = BidEscuchaManager { [weak self] estado in
+            Task { @MainActor in self?.bidStatus = estado }
+        } onPregunta: { [weak self] (texto: String) in
+            guard let self = self else { return }
+            var bgTask: UIBackgroundTaskIdentifier = .invalid
+            bgTask = UIApplication.shared.beginBackgroundTask {
+                UIApplication.shared.endBackgroundTask(bgTask)
+            }
+            await MainActor.run {
+                self.bidStatus = "Tu: \(texto)"
+                BidEscuchaManager.instancia?.pausarConversacionTimer()
+            }
+            let vm = self.streamVM
+            await vm.enviarMensajeABid(mensaje: texto, lat: self.ultimaLat, lon: self.ultimaLon)
+            if vm.respuestaParaFoto {
+                await vm.handleStartStreaming()
+            }
+            await withCheckedContinuation { continuation in
+                var observador: NSObjectProtocol?
+                var resumido = false
+                observador = NotificationCenter.default.addObserver(
+                    forName: NSNotification.Name("BIDAudioTerminado"),
+                    object: nil,
+                    queue: .main
+                ) { _ in
+                    guard !resumido else { return }
+                    resumido = true
+                    if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
+                    continuation.resume()
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 300.0) {
+                    guard !resumido else { return }
+                    resumido = true
+                    if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
+                    continuation.resume()
+                }
+            }
+            await MainActor.run {
+                self.bidStatus = "Escuchando..."
+                BidEscuchaManager.instancia?.reanudar()
+            }
             UIApplication.shared.endBackgroundTask(bgTask)
         }
-        await MainActor.run {
-            self.bidStatus = "Tu: \(texto)"
-            BidEscuchaManager.instancia?.pausarConversacionTimer()
-        }
-        let vm = self.streamVM
-        await vm.enviarMensajeABid(mensaje: texto, lat: self.ultimaLat, lon: self.ultimaLon)
-        if vm.respuestaParaFoto {
-            await vm.handleStartStreaming()
-        }
-        await withCheckedContinuation { continuation in
-            var observador: NSObjectProtocol?
-            var resumido = false
-            observador = NotificationCenter.default.addObserver(
-                forName: NSNotification.Name("BIDAudioTerminado"),
-                object: nil,
-                queue: .main
-            ) { _ in
-                guard !resumido else { return }
-                resumido = true
-                if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
-                continuation.resume()
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 300.0) {
-                guard !resumido else { return }
-                resumido = true
-                if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
-                continuation.resume()
-            }
-        }
-        await MainActor.run {
-            self.bidStatus = "Escuchando..."
-            BidEscuchaManager.instancia?.reanudar()
-        }
-        UIApplication.shared.endBackgroundTask(bgTask)
-    }
 
-    Task {
-        while true {
+        Task {
+            while true {
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                await comprobarVozPendiente()
+                await comprobarReactivar()
+                await MainActor.run {
+                    if self.bidDebeEstarActivo && !self.teslaBluetoothConectado && BidEscuchaManager.instancia?.pausadoPorSistema == true {
+                        BidEscuchaManager.instancia?.reanudarPorSistema()
+                    }
+                    if self.bidDebeEstarActivo && !self.teslaBluetoothConectado && BidEscuchaManager.instancia?.pausadoPorSistema == false && BidEscuchaManager.instancia?.engineActivo == false {
+                        BidEscuchaManager.instancia?.iniciarEscuchaBID()
+                    }
+                }
+            }
+        }
+
+        configurarBluetooth()
+
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+                try? AVAudioSession.sharedInstance().setActive(true)
+                self?.pantallaEncendida()
+            }
+        }
+
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.protectedDataWillBecomeUnavailableNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.pantallaApagada() }
+        }
+
+        LlamadaMonitor.shared.iniciar()
+
+        Task {
             try? await Task.sleep(nanoseconds: 5_000_000_000)
-            await comprobarVozPendiente()
             await MainActor.run {
-                if self.bidDebeEstarActivo && !self.teslaBluetoothConectado && BidEscuchaManager.instancia?.pausadoPorSistema == true {
-                    BidEscuchaManager.instancia?.reanudarPorSistema()
-                }
-                if self.bidDebeEstarActivo && !self.teslaBluetoothConectado && BidEscuchaManager.instancia?.pausadoPorSistema == false && BidEscuchaManager.instancia?.engineActivo == false {
-                    BidEscuchaManager.instancia?.iniciarEscuchaBID()
+                if !self.teslaBluetoothConectado {
+                    self.bidEscucha?.arrancar()
+                    self.actualizarEstadoBid()
                 }
             }
         }
-    }
 
-    configurarBluetooth()
-
-    NotificationCenter.default.addObserver(
-        forName: UIApplication.didBecomeActiveNotification,
-        object: nil,
-        queue: .main
-    ) { [weak self] _ in
-        Task { @MainActor in
-            try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-            try? AVAudioSession.sharedInstance().setActive(true)
-            self?.pantallaEncendida()
+        Task {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            await comprobarVozPendiente()
         }
     }
-
-    NotificationCenter.default.addObserver(
-        forName: UIApplication.protectedDataWillBecomeUnavailableNotification,
-        object: nil,
-        queue: .main
-    ) { [weak self] _ in
-        Task { @MainActor in self?.pantallaApagada() }
-    }
-
-    // Detectar llamadas entrantes y salientes
-    LlamadaMonitor.shared.iniciar()
-
-    Task {
-        try? await Task.sleep(nanoseconds: 5_000_000_000)
-        await MainActor.run {
-            if !self.teslaBluetoothConectado {
-                self.bidEscucha?.arrancar()
-                self.actualizarEstadoBid()
-            }
-        }
-    }
-
-    Task {
-        try? await Task.sleep(nanoseconds: 3_000_000_000)
-        await comprobarVozPendiente()
-    }
-}
 
     func comprobarVozPendiente() async {
         guard let url = URL(string: "https://bidjuanmi.com/bid-voz-pendiente") else { return }
@@ -756,25 +770,26 @@ class BluetoothMonitor: NSObject, CBCentralManagerDelegate {
         }
     }
 }
+
 class LlamadaMonitor: NSObject, CXCallObserverDelegate {
     static let shared = LlamadaMonitor()
     private let callObserver = CXCallObserver()
-    
+
     func iniciar() {
         callObserver.setDelegate(self, queue: .main)
     }
-    
+
     func callObserver(_ callObserver: CXCallObserver, callChanged call: CXCall) {
-    if call.hasEnded {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            if WearablesViewModel.instancia?.bidDebeEstarActivo == true {
-                BidEscuchaManager.instancia?.activarTodo()
+        if call.hasEnded {
+            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=llamada:fin")!).resume()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                if WearablesViewModel.instancia?.bidDebeEstarActivo == true {
+                    BidEscuchaManager.instancia?.activarTodo()
+                }
             }
+        } else if !call.hasEnded && !call.isOnHold {
+            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=llamada:inicio")!).resume()
+            BidEscuchaManager.instancia?.desactivarTodo()
         }
-    } else if !call.hasEnded && !call.isOnHold {
-        BidEscuchaManager.instancia?.desactivarTodo()
     }
 }
-    }
-
-
