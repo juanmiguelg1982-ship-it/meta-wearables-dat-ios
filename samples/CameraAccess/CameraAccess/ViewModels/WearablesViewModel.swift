@@ -117,9 +117,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     pausadoPorSistema = false
     try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
     try? AVAudioSession.sharedInstance().setActive(true)
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-        self.iniciarEscuchaBID()
-    }
+    iniciarEscuchaBID()
 }
 
     func reanudarPorSistema() {
