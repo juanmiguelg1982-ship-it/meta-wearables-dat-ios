@@ -393,20 +393,21 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 }
 
     private func arrancarEngine() {
-        let inputNode = audioEngine.inputNode
-        let formato = inputNode.outputFormat(forBus: 0)
-        guard formato.sampleRate > 0 else { return }
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
-            self?.recognitionRequest?.append(buffer)
-        }
-        if !audioEngine.isRunning {
-            do {
-                try audioEngine.start()
-            } catch {
-                audioEngine.inputNode.removeTap(onBus: 0)
-            }
+    try? AVAudioSession.sharedInstance().setActive(true)
+    let inputNode = audioEngine.inputNode
+    let formato = inputNode.outputFormat(forBus: 0)
+    guard formato.sampleRate > 0 else { return }
+    inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
+        self?.recognitionRequest?.append(buffer)
+    }
+    if !audioEngine.isRunning {
+        do {
+            try audioEngine.start()
+        } catch {
+            audioEngine.inputNode.removeTap(onBus: 0)
         }
     }
+}
 }
 
 @MainActor
