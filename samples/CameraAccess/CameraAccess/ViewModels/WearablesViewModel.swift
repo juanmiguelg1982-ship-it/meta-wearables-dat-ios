@@ -380,15 +380,18 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         Task { await onPregunta(transcripcion) }
     }
 
-    private func pararEngine() {
-        vigilanteTask?.cancel()
-        envioTimer?.invalidate()
-        recognitionTask?.cancel()
-        recognitionTask = nil
-        recognitionRequest?.endAudio()
-        recognitionRequest = nil
-        if audioEngine.isRunning { audioEngine.inputNode.removeTap(onBus: 0) }
+   private func pararEngine() {
+    vigilanteTask?.cancel()
+    envioTimer?.invalidate()
+    recognitionTask?.cancel()
+    recognitionTask = nil
+    recognitionRequest?.endAudio()
+    recognitionRequest = nil
+    if audioEngine.isRunning {
+        audioEngine.inputNode.removeTap(onBus: 0)
+        audioEngine.stop()
     }
+}
 
     private func arrancarEngine() {
         let inputNode = audioEngine.inputNode
