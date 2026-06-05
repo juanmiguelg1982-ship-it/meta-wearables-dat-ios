@@ -396,14 +396,20 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     try? AVAudioSession.sharedInstance().setActive(true)
     let inputNode = audioEngine.inputNode
     let formato = inputNode.outputFormat(forBus: 0)
-    guard formato.sampleRate > 0 else { return }
+    guard formato.sampleRate > 0 else {
+        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=arrancarEngine-sampleRate0")!).resume()
+        return
+    }
     inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
         self?.recognitionRequest?.append(buffer)
     }
     if !audioEngine.isRunning {
         do {
             try audioEngine.start()
+            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=arrancarEngine-OK")!).resume()
         } catch {
+            let msg = "arrancarEngine-ERROR:\(error.localizedDescription)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
             audioEngine.inputNode.removeTap(onBus: 0)
         }
     }
