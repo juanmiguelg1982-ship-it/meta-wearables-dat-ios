@@ -9,7 +9,7 @@ import CallKit
 final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     private let onEstado: (String) -> Void
     private let onPregunta: (String) async -> Void
-
+    private var estaArrancando = false
     private var speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
@@ -220,6 +220,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
 
     func iniciarEscuchaBID() {
+    guard !estaArrancando else { return }
+    estaArrancando = true
     let msg = "engine:\(audioEngine.isRunning) conv:\(enConversacion) grab:\(grabandoRespuesta)"
     let msgEnc = msg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? msg
     URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msgEnc)")!).resume()
@@ -232,6 +234,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
     guard let req = recognitionRequest else {
         URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=recognitionRequest-nil")!).resume()
+        estaArrancando = false
         return
     }
     URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=recognitionRequest-OK")!).resume()
@@ -254,6 +257,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
             }
         }
     }
+    estaArrancando = false
     arrancarEngine()
     onEstado("Escuchando... di OYE")
     arrancarVigilante()
