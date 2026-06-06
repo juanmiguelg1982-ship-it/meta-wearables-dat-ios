@@ -116,9 +116,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     pausadoPorSistema = false
     try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
     try? AVAudioSession.sharedInstance().setActive(true)
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-        self.iniciarEscuchaBID()
-    }
+    iniciarEscuchaBID()
 }
 
     func reanudarPorSistema() {
@@ -399,16 +397,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
 }
 
-    private func arrancarEngine() {
-    do {
-        try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-        try AVAudioSession.sharedInstance().setActive(true)
-    } catch {
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-        self?.arrancarEngine()
-    }
-    return
-}
+    pprivate func arrancarEngine() {
+    try? AVAudioSession.sharedInstance().setActive(true)
     let inputNode = audioEngine.inputNode
     let formato = inputNode.outputFormat(forBus: 0)
     guard formato.sampleRate > 0 else {
@@ -423,12 +413,12 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
             try audioEngine.start()
             URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=arrancarEngine-OK")!).resume()
         } catch {
-    audioEngine.inputNode.removeTap(onBus: 0)
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-        self?.arrancarEngine()
+            let msg = "arrancarEngine-ERROR:\(error.localizedDescription)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
     }
 }
-    }
 }
 }
 @MainActor
