@@ -233,8 +233,12 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         guard let req = recognitionRequest else { return }
         req.shouldReportPartialResults = true
         ultimoResultado = Date()
-        recognitionTask = speechRecognizer?.recognitionTask(with: req) { [weak self] result, error in
-            guard let self = self, !self.faseEscucha else { return }
+        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+guard let req = recognitionRequest else {
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=recognitionRequest-nil")!).resume()
+    return
+}
+URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=recognitionRequest-OK")!).resume()
             if let result = result {
                 self.ultimoResultado = Date()
                 let texto = result.bestTranscription.formattedString.lowercased()
