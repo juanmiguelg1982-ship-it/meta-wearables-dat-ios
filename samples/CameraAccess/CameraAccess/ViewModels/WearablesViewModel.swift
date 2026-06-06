@@ -397,7 +397,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
 }
 
-    pprivate func arrancarEngine() {
+    private func arrancarEngine() {
     try? AVAudioSession.sharedInstance().setActive(true)
     let inputNode = audioEngine.inputNode
     let formato = inputNode.outputFormat(forBus: 0)
