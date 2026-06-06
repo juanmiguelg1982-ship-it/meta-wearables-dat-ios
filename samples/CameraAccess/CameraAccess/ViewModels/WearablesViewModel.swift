@@ -401,11 +401,12 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
         try AVAudioSession.sharedInstance().setActive(true)
     } catch {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            self.arrancarEngine()
-        }
-        return
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+        guard let self = self, !self.pausadoPorSistema else { return }
+        self.arrancarEngine()
     }
+    return
+}
     let inputNode = audioEngine.inputNode
     let formato = inputNode.outputFormat(forBus: 0)
     guard formato.sampleRate > 0 else {
@@ -420,11 +421,12 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
             try audioEngine.start()
             URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=arrancarEngine-OK")!).resume()
         } catch {
-            audioEngine.inputNode.removeTap(onBus: 0)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                self.arrancarEngine()
-            }
-        }
+    audioEngine.inputNode.removeTap(onBus: 0)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+        guard let self = self, !self.pausadoPorSistema else { return }
+        self.arrancarEngine()
+    }
+}
     }
 }
 }
