@@ -427,7 +427,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         }
     }
 }
-
+}
 @MainActor
 class WearablesViewModel: ObservableObject {
     @Published var devices: [DeviceIdentifier]
@@ -819,4 +819,4 @@ class LlamadaMonitor: NSObject, CXCallObserverDelegate {
         }
     }
 }
-}
+
