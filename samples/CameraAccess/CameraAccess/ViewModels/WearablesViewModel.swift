@@ -111,12 +111,14 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         onEstado("⏸ Bid desactivado (Tesla)")
     }
 
-    func activarTodo() {
+   func activarTodo() {
     URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=activarTodo-llamado")!).resume()
     pausadoPorSistema = false
     try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
     try? AVAudioSession.sharedInstance().setActive(true)
-    iniciarEscuchaBID()
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        self.iniciarEscuchaBID()
+    }
 }
 
     func reanudarPorSistema() {
