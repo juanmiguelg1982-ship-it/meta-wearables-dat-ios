@@ -220,44 +220,44 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
 
     func iniciarEscuchaBID() {
-                let msg = "engine:\(audioEngine.isRunning) conv:\(enConversacion) grab:\(grabandoRespuesta)"
-        let msgEnc = msg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? msg
-        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msgEnc)")!).resume()
-        enConversacion = false
-        faseEscucha = false
-        conversacionTimer?.invalidate()
-        pararEngine()
-        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-        try? AVAudioSession.sharedInstance().setActive(true)
-        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-        guard let req = recognitionRequest else { return }
-        req.shouldReportPartialResults = true
-        ultimoResultado = Date()
-        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-guard let req = recognitionRequest else {
-    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=recognitionRequest-nil")!).resume()
-    return
-}
-URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=recognitionRequest-OK")!).resume()
-            if let result = result {
-                self.ultimoResultado = Date()
-                let texto = result.bestTranscription.formattedString.lowercased()
-                if self.palabrasActivacion.contains(where: { texto.contains($0) }) {
-                    DispatchQueue.main.async { self.wakeWordDetectado() }
-                }
-            }
-            if error != nil {
-                guard !self.faseEscucha, !self.enConversacion else { return }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    guard !self.enConversacion, !self.grabandoRespuesta, !self.pausadoPorSistema else { return }
-                    self.iniciarEscuchaBID()
-                }
+    let msg = "engine:\(audioEngine.isRunning) conv:\(enConversacion) grab:\(grabandoRespuesta)"
+    let msgEnc = msg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? msg
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msgEnc)")!).resume()
+    enConversacion = false
+    faseEscucha = false
+    conversacionTimer?.invalidate()
+    pararEngine()
+    try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+    try? AVAudioSession.sharedInstance().setActive(true)
+    recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+    guard let req = recognitionRequest else {
+        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=recognitionRequest-nil")!).resume()
+        return
+    }
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=recognitionRequest-OK")!).resume()
+    req.shouldReportPartialResults = true
+    ultimoResultado = Date()
+    recognitionTask = speechRecognizer?.recognitionTask(with: req) { [weak self] result, error in
+        guard let self = self, !self.faseEscucha else { return }
+        if let result = result {
+            self.ultimoResultado = Date()
+            let texto = result.bestTranscription.formattedString.lowercased()
+            if self.palabrasActivacion.contains(where: { texto.contains($0) }) {
+                DispatchQueue.main.async { self.wakeWordDetectado() }
             }
         }
-        arrancarEngine()
-        onEstado("Escuchando... di OYE")
-        arrancarVigilante()
+        if error != nil {
+            guard !self.faseEscucha, !self.enConversacion else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                guard !self.enConversacion, !self.grabandoRespuesta, !self.pausadoPorSistema else { return }
+                self.iniciarEscuchaBID()
+            }
+        }
     }
+    arrancarEngine()
+    onEstado("Escuchando... di OYE")
+    arrancarVigilante()
+}
 
     private func reproducirPitido() {
         let sampleRate = 44100.0
