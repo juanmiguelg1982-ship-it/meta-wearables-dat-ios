@@ -253,7 +253,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
             }
         }
     }
-        arrancarEngine()
+        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=antesArrancar")!).resume()
+    arrancarEngine()
     onEstado("Escuchando... di OYE")
     arrancarVigilante()
 }
