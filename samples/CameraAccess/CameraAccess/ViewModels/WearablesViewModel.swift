@@ -398,7 +398,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 }
 
     private func arrancarEngine() {
-    try? AVAudioSession.sharedInstance().setActive(true)
     let inputNode = audioEngine.inputNode
     let formato = inputNode.outputFormat(forBus: 0)
     guard formato.sampleRate > 0 else {
@@ -408,16 +407,15 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
         self?.recognitionRequest?.append(buffer)
     }
-    if !audioEngine.isRunning {
-        do {
-            try audioEngine.start()
-            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=arrancarEngine-OK")!).resume()
-        } catch {
-            let msg = "arrancarEngine-ERROR:\(error.localizedDescription)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
-            audioEngine.inputNode.removeTap(onBus: 0)
-        }
+    do {
+        try audioEngine.start()
+        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=arrancarEngine-OK")!).resume()
+    } catch {
+        audioEngine.inputNode.removeTap(onBus: 0)
+        let msg = "arrancarEngine-ERROR:\(error.localizedDescription)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
     }
+}
 }
 }
 
