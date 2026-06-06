@@ -253,8 +253,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
             }
         }
     }
-    estaArrancando = false
-    arrancarEngine()
+        arrancarEngine()
     onEstado("Escuchando... di OYE")
     arrancarVigilante()
 }
@@ -820,4 +819,4 @@ class LlamadaMonitor: NSObject, CXCallObserverDelegate {
         }
     }
 }
-}
+
