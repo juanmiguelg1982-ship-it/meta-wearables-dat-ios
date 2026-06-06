@@ -403,8 +403,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         try AVAudioSession.sharedInstance().setActive(true)
     } catch {
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-        guard let self = self, !self.pausadoPorSistema else { return }
-        self.arrancarEngine()
+        self?.arrancarEngine()
     }
     return
 }
@@ -424,8 +423,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         } catch {
     audioEngine.inputNode.removeTap(onBus: 0)
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-        guard let self = self, !self.pausadoPorSistema else { return }
-        self.arrancarEngine()
+        self?.arrancarEngine()
     }
 }
     }
