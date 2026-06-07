@@ -70,7 +70,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         conversacionTimer?.invalidate()
         envioTimer?.invalidate()
         enConversacion = false
-        pararEngine(detenerAudio: true)
+        pararEngine()
         onEstado("⏸ Bid desactivado")
     }
 
@@ -384,7 +384,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         Task { await onPregunta(transcripcion) }
     }
 
-  private func pararEngine(detenerAudio: Bool = false) {
+  private func pararEngine() {
     vigilanteTask?.cancel()
     envioTimer?.invalidate()
     recognitionTask?.cancel()
@@ -393,11 +393,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     recognitionRequest = nil
     if audioEngine.isRunning {
         audioEngine.inputNode.removeTap(onBus: 0)
-        if detenerAudio {
-    audioEngine.stop()
-    audioEngine = AVAudioEngine()
-}
     }
+}
 }
 
    private func arrancarEngine() {
