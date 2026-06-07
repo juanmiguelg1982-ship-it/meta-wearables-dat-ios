@@ -392,8 +392,9 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     recognitionRequest?.endAudio()
     recognitionRequest = nil
     if audioEngine.isRunning {
-        audioEngine.inputNode.removeTap(onBus: 0)
-    }
+    audioEngine.inputNode.removeTap(onBus: 0)
+    audioEngine.stop()
+}
 }
 }
 
@@ -421,13 +422,14 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
             try audioEngine.start()
             URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=arrancarEngine-OK")!).resume()
         } catch {
-            audioEngine.inputNode.removeTap(onBus: 0)
-            let msg = "arrancarEngine-ERROR:\(error.localizedDescription)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                self.arrancarEngine()
-            }
-        }
+    audioEngine.inputNode.removeTap(onBus: 0)
+    audioEngine = AVAudioEngine()
+    let msg = "arrancarEngine-ERROR:\(error.localizedDescription)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        self.arrancarEngine()
+    }
+}
     }
 }
 }
