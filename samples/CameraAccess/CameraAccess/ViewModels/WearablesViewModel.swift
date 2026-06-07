@@ -397,7 +397,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 }
 }
 }
-
+}
    private func arrancarEngine() {
     do {
         try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
