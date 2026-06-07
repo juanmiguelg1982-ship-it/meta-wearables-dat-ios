@@ -392,11 +392,11 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     recognitionRequest?.endAudio()
     recognitionRequest = nil
     if audioEngine.isRunning {
-    audioEngine.inputNode.removeTap(onBus: 0)
-    audioEngine.stop()
+        audioEngine.inputNode.removeTap(onBus: 0)
+        audioEngine.stop()
+    }
 }
-
-
+}
 
    private func arrancarEngine() {
     do {
