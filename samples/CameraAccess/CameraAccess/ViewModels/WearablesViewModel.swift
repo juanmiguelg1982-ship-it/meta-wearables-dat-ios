@@ -396,7 +396,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     audioEngine.stop()
 }
 }
-}
+
 
    private func arrancarEngine() {
     do {
@@ -432,7 +432,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 }
     }
 }
-}
+
 
 @MainActor
 class WearablesViewModel: ObservableObject {
