@@ -396,9 +396,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         audioEngine.stop()
     }
 }
-}
 
-   private func arrancarEngine() {
+    private func arrancarEngine() {
     do {
         try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
         try AVAudioSession.sharedInstance().setActive(true)
@@ -432,7 +431,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 }
     }
 }
-
+}
 
 @MainActor
 class WearablesViewModel: ObservableObject {
