@@ -396,7 +396,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     audioEngine.stop()
 }
 }
-
+}
 
    private func arrancarEngine() {
     do {
