@@ -395,8 +395,8 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     audioEngine.inputNode.removeTap(onBus: 0)
     audioEngine.stop()
 }
-}
-}
+
+
 
    private func arrancarEngine() {
     do {
