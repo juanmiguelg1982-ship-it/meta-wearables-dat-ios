@@ -562,14 +562,16 @@ class WearablesViewModel: ObservableObject {
     }
 }
    func pantallaEncendida() {
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=pantallaEncendida-llamado")!).resume()
     pantallEncendida = true
     bidActivadoManual = false
-    BidEscuchaManager.instancia?.pausarPorSistema()
     BidEscuchaManager.instancia?.pantallaApagada = false
+    BidEscuchaManager.instancia?.pausarPorSistema()
     actualizarEstadoBid()
 }
 
    func pantallaApagada() {
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=pantallaApagada-llamado")!).resume()
     pantallEncendida = false
     let msg = "pantallaApagada-pausado:\(BidEscuchaManager.instancia?.pausadoPorSistema ?? false)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
     URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
