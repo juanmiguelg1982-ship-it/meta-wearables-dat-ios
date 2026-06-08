@@ -123,12 +123,14 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 }
 
     func reanudarPorSistema() {
-        guard pausadoPorSistema else { return }
-        pausadoPorSistema = false
-        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-        try? AVAudioSession.sharedInstance().setActive(true)
-        reanudar()
-    }
+    guard pausadoPorSistema else { return }
+    let pantallaApagada = WearablesViewModel.instancia?.pantallEncendida == false
+    guard pantallaApagada else { return }
+    pausadoPorSistema = false
+    try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+    try? AVAudioSession.sharedInstance().setActive(true)
+    reanudar()
+}
 
     func pausar() {
         guard !escuchandoOk else { return }
