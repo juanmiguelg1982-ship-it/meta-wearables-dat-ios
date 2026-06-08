@@ -28,7 +28,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     var teslaModoActivo = false
     private var gestionandoCambioTesla = false
     var engineActivo: Bool { audioEngine.isRunning }
-    
+    private var arrancando = false
 
     static var instancia: BidEscuchaManager?
     static func pausarEngine() { instancia?.pausar() }
@@ -399,10 +399,13 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 }
 
     private func arrancarEngine() {
+    guard !arrancando else { return }
+    arrancando = true
     do {
         try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
         try AVAudioSession.sharedInstance().setActive(true)
     } catch {
+        arrancando = false
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             self.arrancarEngine()
         }
@@ -412,6 +415,12 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     let formato = inputNode.outputFormat(forBus: 0)
     guard formato.sampleRate > 0 else {
         URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=arrancarEngine-sampleRate0")!).resume()
+        arrancando = false
+        audioEngine.inputNode.removeTap(onBus: 0)
+        audioEngine = AVAudioEngine()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.arrancarEngine()
+        }
         return
     }
     inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
@@ -420,16 +429,20 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     if !audioEngine.isRunning {
         do {
             try audioEngine.start()
+            arrancando = false
             URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=arrancarEngine-OK")!).resume()
         } catch {
-    audioEngine.inputNode.removeTap(onBus: 0)
-    audioEngine = AVAudioEngine()
-    let msg = "arrancarEngine-ERROR:\(error.localizedDescription)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
-    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-        self.arrancarEngine()
-    }
-}
+            arrancando = false
+            audioEngine.inputNode.removeTap(onBus: 0)
+            audioEngine = AVAudioEngine()
+            let msg = "arrancarEngine-ERROR:\(error.localizedDescription)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                self.arrancarEngine()
+            }
+        }
+    } else {
+        arrancando = false
     }
 }
 }
