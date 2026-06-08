@@ -71,9 +71,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     envioTimer?.invalidate()
     enConversacion = false
     pararEngine()
-    try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-    try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-    try? AVAudioSession.sharedInstance().setActive(true)
     onEstado("⏸ Bid desactivado")
 }
 
