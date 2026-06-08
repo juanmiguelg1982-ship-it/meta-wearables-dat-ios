@@ -313,13 +313,17 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
 
     func reanudar() {
-        guard !grabandoRespuesta, !pausadoPorSistema else { return }
-        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-        try? AVAudioSession.sharedInstance().setActive(true)
-        if enConversacion { iniciarEscuchaPregunta() }
-        else { iniciarEscuchaBID() }
-    }
-
+    let msg = "reanudar-pausado:\(pausadoPorSistema)-grab:\(grabandoRespuesta)-pantalla:\(WearablesViewModel.instancia?.pantallEncendida ?? true)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
+    guard !grabandoRespuesta, !pausadoPorSistema else { return }
+    let pantallaApagada = WearablesViewModel.instancia?.pantallEncendida == false
+    let debeEstarActivo = WearablesViewModel.instancia?.bidDebeEstarActivo ?? false
+    guard pantallaApagada || debeEstarActivo else { return }
+    try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+    try? AVAudioSession.sharedInstance().setActive(true)
+    if enConversacion { iniciarEscuchaPregunta() }
+    else { iniciarEscuchaBID() }
+}
     private func iniciarEscuchaPregunta() {
         grabandoRespuesta = true
         ultimoTexto = ""
