@@ -115,11 +115,10 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   func activarTodo() {
     URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=activarTodo-llamado")!).resume()
     pausadoPorSistema = false
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-        try? AVAudioSession.sharedInstance().setActive(true)
-        self.iniciarEscuchaBID()
-    }
+    try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+    try? AVAudioSession.sharedInstance().setActive(true)
+    iniciarEscuchaBID()
+}
 }
 
     func reanudarPorSistema() {
@@ -405,15 +404,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     private func arrancarEngine() {
     guard !arrancando else { return }
     arrancando = true
-    let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
-    let rutaEstable = outputs.contains { $0.portType == .bluetoothHFP }
-    if !rutaEstable {
-        arrancando = false
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            self.arrancarEngine()
-        }
-        return
-    }
     do {
         try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
         try AVAudioSession.sharedInstance().setActive(true)
