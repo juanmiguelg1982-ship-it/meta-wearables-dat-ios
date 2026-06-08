@@ -226,6 +226,9 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     let msg = "engine:\(audioEngine.isRunning) conv:\(enConversacion) grab:\(grabandoRespuesta)"
     let msgEnc = msg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? msg
     URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msgEnc)")!).resume()
+    let caller = Thread.callStackSymbols.prefix(4).joined(separator: "|")
+    let callerEnc = ("caller:" + caller).addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(callerEnc)")!).resume()
     enConversacion = false
     faseEscucha = false
     conversacionTimer?.invalidate()
