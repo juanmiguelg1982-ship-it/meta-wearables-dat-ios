@@ -29,7 +29,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     private var gestionandoCambioTesla = false
     var engineActivo: Bool { audioEngine.isRunning }
     private var arrancando = false
-private var escuchaYaArrancada = false
+
     static var instancia: BidEscuchaManager?
     static func pausarEngine() { instancia?.pausar() }
     static func reanudarEngine() { instancia?.reanudar() }
@@ -462,6 +462,7 @@ class WearablesViewModel: ObservableObject {
     @Published var bidActivadoManual: Bool = false
     @Published var pantallEncendida: Bool = true
     @Published var teslaBluetoothConectado: Bool = false
+    private var escuchaYaArrancada = false
     static weak var instancia: WearablesViewModel?
 
     private var registrationTask: Task<Void, Never>?
