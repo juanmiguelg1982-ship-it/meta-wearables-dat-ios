@@ -159,21 +159,22 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=audio:interrupcion:began")!).resume()
         pararEngine()
     } else if tipo == .ended {
-        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=audio:interrupcion:ended")!).resume()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            let debeEstarActivo = WearablesViewModel.instancia?.bidDebeEstarActivo ?? false
-            let teslaConectado = WearablesViewModel.instancia?.teslaBluetoothConectado ?? false
-            guard debeEstarActivo && !teslaConectado else {
-                URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=audio:interrupcion:ended-ignorado")!).resume()
-                return
-            }
-            try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-            try? AVAudioSession.sharedInstance().setActive(true)
-            self.pausadoPorSistema = false
-            if self.enConversacion { self.iniciarEscuchaPregunta() }
-            else { self.iniciarEscuchaBID() }
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=audio:interrupcion:ended")!).resume()
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        let debeEstarActivo = WearablesViewModel.instancia?.bidDebeEstarActivo ?? false
+        let teslaConectado = WearablesViewModel.instancia?.teslaBluetoothConectado ?? false
+        let pantallaApagada = WearablesViewModel.instancia?.pantallEncendida == false
+        guard (debeEstarActivo || pantallaApagada) && !teslaConectado else {
+            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=audio:interrupcion:ended-ignorado")!).resume()
+            return
         }
+        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(true)
+        self.pausadoPorSistema = false
+        if self.enConversacion { self.iniciarEscuchaPregunta() }
+        else { self.iniciarEscuchaBID() }
     }
+}
 }
     @objc private func rutaAudioCambio(_ notification: Notification) {
         let allOutputs = AVAudioSession.sharedInstance().currentRoute.outputs
