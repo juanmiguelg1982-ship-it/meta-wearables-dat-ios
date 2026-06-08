@@ -639,13 +639,15 @@ class WearablesViewModel: ObservableObject {
                 await comprobarVozPendiente()
                 await comprobarReactivar()
                 await MainActor.run {
-                    if self.bidDebeEstarActivo && !self.teslaBluetoothConectado && BidEscuchaManager.instancia?.pausadoPorSistema == true {
-                        BidEscuchaManager.instancia?.reanudarPorSistema()
-                    }
-                    if self.bidDebeEstarActivo && !self.teslaBluetoothConectado && BidEscuchaManager.instancia?.pausadoPorSistema == false && BidEscuchaManager.instancia?.engineActivo == false {
-                        BidEscuchaManager.instancia?.iniciarEscuchaBID()
-                    }
-                }
+    if self.bidDebeEstarActivo && !self.teslaBluetoothConectado && BidEscuchaManager.instancia?.pausadoPorSistema == true {
+        BidEscuchaManager.instancia?.reanudarPorSistema()
+    }
+    let estadoLoop = "loop5s-debeActivo:\(self.bidDebeEstarActivo)-pausado:\(BidEscuchaManager.instancia?.pausadoPorSistema ?? false)-engine:\(BidEscuchaManager.instancia?.engineActivo ?? false)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(estadoLoop)")!).resume()
+    if self.bidDebeEstarActivo && !self.teslaBluetoothConectado && BidEscuchaManager.instancia?.pausadoPorSistema == false && BidEscuchaManager.instancia?.engineActivo == false {
+        BidEscuchaManager.instancia?.iniciarEscuchaBID()
+    }
+}
             }
         }
 
