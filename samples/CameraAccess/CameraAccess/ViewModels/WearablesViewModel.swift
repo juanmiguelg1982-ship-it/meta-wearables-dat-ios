@@ -405,6 +405,15 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     private func arrancarEngine() {
     guard !arrancando else { return }
     arrancando = true
+    let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
+    let rutaEstable = outputs.contains { $0.portType == .bluetoothHFP }
+    if !rutaEstable {
+        arrancando = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.arrancarEngine()
+        }
+        return
+    }
     do {
         try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
         try AVAudioSession.sharedInstance().setActive(true)
@@ -441,7 +450,10 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
             audioEngine = AVAudioEngine()
             let msg = "arrancarEngine-ERROR:\(error.localizedDescription)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
             URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+                try? AVAudioSession.sharedInstance().setActive(true)
                 self.arrancarEngine()
             }
         }
