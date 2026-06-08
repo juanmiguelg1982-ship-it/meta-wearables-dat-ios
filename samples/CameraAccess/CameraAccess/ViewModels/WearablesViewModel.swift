@@ -209,16 +209,15 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
                 try? await Task.sleep(nanoseconds: 3_000_000_000)
                 guard let self = self, !self.enConversacion, !self.grabandoRespuesta else { continue }
                 if Date().timeIntervalSince(self.ultimoResultado) > 6 {
-                    await MainActor.run {
-                        if !self.audioEngine.isRunning {
-                            self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
-                            self.speechRecognizer?.delegate = self
-                            self.iniciarEscuchaBID()
-                        } else {
-                            self.ultimoResultado = Date()
-                        }
-                    }
-                }
+    await MainActor.run {
+        let pantallaApagada = WearablesViewModel.instancia?.pantallEncendida == false
+        if !self.audioEngine.isRunning && pantallaApagada {
+            self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
+            self.speechRecognizer?.delegate = self
+            self.iniciarEscuchaBID()
+        }
+    }
+}
             }
         }
     }
