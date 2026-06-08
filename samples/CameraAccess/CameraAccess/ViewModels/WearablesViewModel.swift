@@ -247,12 +247,15 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
             }
         }
         if error != nil {
-            guard !self.faseEscucha, !self.enConversacion else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                guard !self.enConversacion, !self.grabandoRespuesta, !self.pausadoPorSistema else { return }
-                self.iniciarEscuchaBID()
-            }
-        }
+    guard !self.faseEscucha, !self.enConversacion else { return }
+    try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        guard !self.enConversacion, !self.grabandoRespuesta, !self.pausadoPorSistema else { return }
+        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(true)
+        self.iniciarEscuchaBID()
+    }
+}
     }
         URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=antesArrancar")!).resume()
     arrancarEngine()
