@@ -65,14 +65,17 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
 
     func pausarPorSistema() {
-        guard !pausadoPorSistema else { return }
-        pausadoPorSistema = true
-        conversacionTimer?.invalidate()
-        envioTimer?.invalidate()
-        enConversacion = false
-        pararEngine()
-        onEstado("⏸ Bid desactivado")
-    }
+    guard !pausadoPorSistema else { return }
+    pausadoPorSistema = true
+    conversacionTimer?.invalidate()
+    envioTimer?.invalidate()
+    enConversacion = false
+    pararEngine()
+    try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+    try? AVAudioSession.sharedInstance().setActive(true)
+    onEstado("⏸ Bid desactivado")
+}
 
     func pausarPorTesla() {
         guard !pausadoPorSistema else { return }
@@ -539,10 +542,15 @@ class WearablesViewModel: ObservableObject {
         actualizarEstadoBid()
     }
 
-    func pantallaApagada() {
+   func pantallaApagada() {
     pantallEncendida = false
     let msg = "pantallaApagada-pausado:\(BidEscuchaManager.instancia?.pausadoPorSistema ?? false)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
     URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
+    if BidEscuchaManager.instancia?.engineActivo == true {
+        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=pantallaApagada-engineYaActivo-noTocar")!).resume()
+        BidEscuchaManager.instancia?.pausadoPorSistema = false
+        return
+    }
     actualizarEstadoBid()
 }
 
