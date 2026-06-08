@@ -565,6 +565,7 @@ class WearablesViewModel: ObservableObject {
     }
 }
    func pantallaEncendida() {
+    guard !pantallEncendida else { return }
     URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=pantallaEncendida-llamado")!).resume()
     pantallEncendida = true
     bidActivadoManual = false
