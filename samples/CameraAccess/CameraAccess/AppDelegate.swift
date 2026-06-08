@@ -72,6 +72,13 @@ class AppDelegate: NSObject, UIApplicationDelegate, PKPushRegistryDelegate {
             silencioPlayer?.volume = 0.0
             silencioPlayer?.prepareToPlay()
             silencioPlayer?.play()
+            NotificationCenter.default.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] _ in
+    if self?.silencioPlayer?.isPlaying == false {
+        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(true)
+        self?.silencioPlayer?.play()
+    }
+}
         } catch {}
 
         Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
