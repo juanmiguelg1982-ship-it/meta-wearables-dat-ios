@@ -681,12 +681,12 @@ class WearablesViewModel: ObservableObject {
         }
 
         NotificationCenter.default.addObserver(
-            forName: UIApplication.protectedDataWillBecomeUnavailableNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in self?.pantallaApagada() }
-        }
+    forName: UIApplication.didEnterBackgroundNotification,
+    object: nil,
+    queue: .main
+) { [weak self] _ in
+    Task { @MainActor in self?.pantallaApagada() }
+}
 
         LlamadaMonitor.shared.iniciar()
 
