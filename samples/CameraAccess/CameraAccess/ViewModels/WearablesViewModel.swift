@@ -553,7 +553,10 @@ class WearablesViewModel: ObservableObject {
     if teslaBluetoothConectado {
         BidEscuchaManager.instancia?.desactivarTodo()
     } else {
-        if bidDebeEstarActivo {
+        if bidDebeEstarActivo && !pantallEncendida {
+            BidEscuchaManager.instancia?.pausadoPorSistema = false
+            BidEscuchaManager.instancia?.activarTodo()
+        } else if bidDebeEstarActivo && pantallEncendida && bidActivadoManual {
             BidEscuchaManager.instancia?.pausadoPorSistema = false
             BidEscuchaManager.instancia?.activarTodo()
         } else {
