@@ -14,10 +14,11 @@ class AppDelegate: NSObject, UIApplicationDelegate, PKPushRegistryDelegate {
         return true
     }
 
-    func applicationDidEnterBackground(_ application: UIApplication) {
-        activarSesionAudio()
-        renovarBackgroundTask()
-    }
+    ffunc applicationDidEnterBackground(_ application: UIApplication) {
+    activarSesionAudio()
+    silencioPlayer?.play()
+    renovarBackgroundTask()
+}
 
     func applicationWillResignActive(_ application: UIApplication) {
         activarSesionAudio()
