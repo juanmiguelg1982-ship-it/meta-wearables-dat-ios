@@ -661,14 +661,15 @@ class WearablesViewModel: ObservableObject {
         LlamadaMonitor.shared.iniciar()
 
         Task {
-            try? await Task.sleep(nanoseconds: 5_000_000_000)
-            await MainActor.run {
-                if !self.teslaBluetoothConectado {
-                    self.bidEscucha?.arrancar()
-                    self.actualizarEstadoBid()
-                }
-            }
+    try? await Task.sleep(nanoseconds: 5_000_000_000)
+    await MainActor.run {
+        if !self.teslaBluetoothConectado {
+            self.bidActivadoManual = true
+            self.bidEscucha?.arrancar()
+            self.actualizarEstadoBid()
         }
+    }
+}
 
         Task {
             try? await Task.sleep(nanoseconds: 3_000_000_000)
