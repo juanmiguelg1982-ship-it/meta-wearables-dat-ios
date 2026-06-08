@@ -451,7 +451,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         arrancando = false
     }
 }
-}
+
 
 @MainActor
 class WearablesViewModel: ObservableObject {
