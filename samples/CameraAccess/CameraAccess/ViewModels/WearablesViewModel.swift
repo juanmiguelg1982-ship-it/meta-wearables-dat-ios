@@ -155,11 +155,10 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
           let tipoValor = info[AVAudioSessionInterruptionTypeKey] as? UInt,
           let tipo = AVAudioSession.InterruptionType(rawValue: tipoValor) else { return }
     if tipo == .began {
-        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=llamada:inicio")!).resume()
+        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=audio:interrupcion:began")!).resume()
         pararEngine()
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     } else if tipo == .ended {
-        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=llamada:fin")!).resume()
+        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=audio:interrupcion:ended")!).resume()
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             guard !self.pausadoPorSistema else { return }
             try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
