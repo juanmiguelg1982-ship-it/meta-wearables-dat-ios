@@ -112,6 +112,9 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
 
    func activarTodo() {
+    let caller = Thread.callStackSymbols.prefix(4).joined(separator: "|")
+    let callerEnc = ("activarTodo-caller:" + caller).addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(callerEnc)")!).resume()
     URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=activarTodo-llamado")!).resume()
     pausadoPorSistema = false
     try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
@@ -537,6 +540,8 @@ class WearablesViewModel: ObservableObject {
     }
 
     func actualizarEstadoBid() {
+    let msg = "actualizarEstadoBid-tesla:\(teslaBluetoothConectado)-debeActivo:\(bidDebeEstarActivo)-pantalla:\(pantallEncendida)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
     if teslaBluetoothConectado {
         BidEscuchaManager.instancia?.desactivarTodo()
     } else {
@@ -548,7 +553,6 @@ class WearablesViewModel: ObservableObject {
         }
     }
 }
-
    func pantallaEncendida() {
     pantallEncendida = true
     bidActivadoManual = false
