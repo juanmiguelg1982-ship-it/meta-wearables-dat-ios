@@ -154,24 +154,19 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     guard let info = notification.userInfo,
           let tipoValor = info[AVAudioSessionInterruptionTypeKey] as? UInt,
           let tipo = AVAudioSession.InterruptionType(rawValue: tipoValor) else { return }
-    
+
     if tipo == .began {
         URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=audio:interrupcion:began")!).resume()
         pararEngine()
-        // NO hacemos setActive(false) aquí — si lo hacemos, iOS no nos devuelve la sesión
     } else if tipo == .ended {
         URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=audio:interrupcion:ended")!).resume()
-        
-        // Ignorar pausadoPorSistema — usar bidDebeEstarActivo como fuente de verdad
-        let debeEstarActivo = WearablesViewModel.instancia?.bidDebeEstarActivo ?? false
-        let teslaConectado = WearablesViewModel.instancia?.teslaBluetoothConectado ?? false
-        
-        guard debeEstarActivo && !teslaConectado else {
-            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=audio:interrupcion:ended-ignorado")!).resume()
-            return
-        }
-        
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            let debeEstarActivo = WearablesViewModel.instancia?.bidDebeEstarActivo ?? false
+            let teslaConectado = WearablesViewModel.instancia?.teslaBluetoothConectado ?? false
+            guard debeEstarActivo && !teslaConectado else {
+                URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=audio:interrupcion:ended-ignorado")!).resume()
+                return
+            }
             try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
             try? AVAudioSession.sharedInstance().setActive(true)
             self.pausadoPorSistema = false
@@ -180,7 +175,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         }
     }
 }
-
     @objc private func rutaAudioCambio(_ notification: Notification) {
         let allOutputs = AVAudioSession.sharedInstance().currentRoute.outputs
         for output in allOutputs {
