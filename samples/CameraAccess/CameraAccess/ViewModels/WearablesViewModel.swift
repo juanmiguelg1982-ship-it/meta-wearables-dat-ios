@@ -690,9 +690,7 @@ class WearablesViewModel: ObservableObject {
     try? await Task.sleep(nanoseconds: 5_000_000_000)
     await MainActor.run {
         if !self.teslaBluetoothConectado {
-            self.bidActivadoManual = true
             self.bidEscucha?.arrancar()
-            self.actualizarEstadoBid()
         }
     }
 }
