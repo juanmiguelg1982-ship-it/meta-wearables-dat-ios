@@ -698,40 +698,41 @@ class WearablesViewModel: ObservableObject {
     }
 
     func comprobarVozPendiente() async {
-        guard let url = URL(string: "https://bidjuanmi.com/bid-voz-pendiente") else { return }
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let mensaje = json["mensaje"] as? String,
-                  !mensaje.isEmpty else { return }
-            let vm = self.streamVM
-            await vm.reproducirAudio(texto: mensaje)
-            await withCheckedContinuation { continuation in
-                var observador: NSObjectProtocol?
-                var resumido = false
-                observador = NotificationCenter.default.addObserver(
-                    forName: NSNotification.Name("BIDAudioTerminado"),
-                    object: nil,
-                    queue: .main
-                ) { _ in
-                    guard !resumido else { return }
-                    resumido = true
-                    if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
-                    continuation.resume()
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) {
-                    guard !resumido else { return }
-                    resumido = true
-                    if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
-                    continuation.resume()
-                }
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=comprobarVozPendiente-inicio")!).resume()
+    guard let url = URL(string: "https://bidjuanmi.com/bid-voz-pendiente") else { return }
+    do {
+        let (data, _) = try await URLSession.shared.data(from: url)
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let mensaje = json["mensaje"] as? String,
+              !mensaje.isEmpty else { return }
+        let vm = self.streamVM
+        await vm.reproducirAudio(texto: mensaje)
+        await withCheckedContinuation { continuation in
+            var observador: NSObjectProtocol?
+            var resumido = false
+            observador = NotificationCenter.default.addObserver(
+                forName: NSNotification.Name("BIDAudioTerminado"),
+                object: nil,
+                queue: .main
+            ) { _ in
+                guard !resumido else { return }
+                resumido = true
+                if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
+                continuation.resume()
             }
-            await MainActor.run {
-                BidEscuchaManager.instancia?.enConversacion = true
-                BidEscuchaManager.instancia?.reanudar()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) {
+                guard !resumido else { return }
+                resumido = true
+                if let obs = observador { NotificationCenter.default.removeObserver(obs); observador = nil }
+                continuation.resume()
             }
-        } catch {}
-    }
+        }
+        await MainActor.run {
+            BidEscuchaManager.instancia?.enConversacion = true
+            BidEscuchaManager.instancia?.reanudar()
+        }
+    } catch {}
+}
 
     private func setupDeviceStream() async {
         if let task = deviceStreamTask, !task.isCancelled { task.cancel() }
