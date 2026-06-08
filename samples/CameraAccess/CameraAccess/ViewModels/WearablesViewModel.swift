@@ -734,6 +734,8 @@ class WearablesViewModel: ObservableObject {
             }
         }
         await MainActor.run {
+            guard WearablesViewModel.instancia?.pantallEncendida == false ||
+                  WearablesViewModel.instancia?.bidDebeEstarActivo == true else { return }
             BidEscuchaManager.instancia?.enConversacion = true
             BidEscuchaManager.instancia?.reanudar()
         }
