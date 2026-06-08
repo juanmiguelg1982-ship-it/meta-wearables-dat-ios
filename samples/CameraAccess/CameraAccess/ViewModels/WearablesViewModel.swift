@@ -313,16 +313,18 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     }
 
     func reanudar() {
-    let msg = "reanudar-pausado:\(pausadoPorSistema)-grab:\(grabandoRespuesta)-pantalla:\(WearablesViewModel.instancia?.pantallEncendida ?? true)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
     guard !grabandoRespuesta, !pausadoPorSistema else { return }
-    let pantallaApagada = WearablesViewModel.instancia?.pantallEncendida == false
-    let debeEstarActivo = WearablesViewModel.instancia?.bidDebeEstarActivo ?? false
-    guard pantallaApagada || debeEstarActivo else { return }
-    try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-    try? AVAudioSession.sharedInstance().setActive(true)
-    if enConversacion { iniciarEscuchaPregunta() }
-    else { iniciarEscuchaBID() }
+    DispatchQueue.main.async {
+        let pantallaApagada = WearablesViewModel.instancia?.pantallEncendida == false
+        let debeEstarActivo = WearablesViewModel.instancia?.bidDebeEstarActivo ?? false
+        let msg = "reanudar-pantalla:\(WearablesViewModel.instancia?.pantallEncendida ?? true)-debeActivo:\(debeEstarActivo)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
+        guard pantallaApagada || debeEstarActivo else { return }
+        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(true)
+        if self.enConversacion { self.iniciarEscuchaPregunta() }
+        else { self.iniciarEscuchaBID() }
+    }
 }
     private func iniciarEscuchaPregunta() {
         grabandoRespuesta = true
