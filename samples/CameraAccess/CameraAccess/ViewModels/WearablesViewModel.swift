@@ -577,12 +577,12 @@ class WearablesViewModel: ObservableObject {
    func pantallaApagada() {
     URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=pantallaApagada-llamado")!).resume()
     pantallEncendida = false
+    BidEscuchaManager.instancia?.pantallaApagada = true
     let msg = "pantallaApagada-pausado:\(BidEscuchaManager.instancia?.pausadoPorSistema ?? false)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
     URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
     if BidEscuchaManager.instancia?.engineActivo == true {
         URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=pantallaApagada-engineYaActivo-noTocar")!).resume()
         BidEscuchaManager.instancia?.pausadoPorSistema = false
-        BidEscuchaManager.instancia?.pantallaApagada = true
         return
     }
     actualizarEstadoBid()
