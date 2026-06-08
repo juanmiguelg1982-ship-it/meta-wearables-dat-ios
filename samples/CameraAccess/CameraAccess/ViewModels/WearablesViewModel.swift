@@ -29,7 +29,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     private var gestionandoCambioTesla = false
     var engineActivo: Bool { audioEngine.isRunning }
     private var arrancando = false
-
+private var escuchaYaArrancada = false
     static var instancia: BidEscuchaManager?
     static func pausarEngine() { instancia?.pausar() }
     static func reanudarEngine() { instancia?.reanudar() }
@@ -582,7 +582,8 @@ class WearablesViewModel: ObservableObject {
             bgTaskPermanente = UIApplication.shared.beginBackgroundTask(withName: "BidEscuchaRenovado") { }
         }
 
-        guard bidEscucha == nil else { return }
+        guard !escuchaYaArrancada else { return }
+escuchaYaArrancada = true
         bidEscucha = BidEscuchaManager { [weak self] estado in
             Task { @MainActor in self?.bidStatus = estado }
         } onPregunta: { [weak self] (texto: String) in
