@@ -26,6 +26,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
     private var escuchandoOk = false
     var pausadoPorSistema = false
     var teslaModoActivo = false
+    var pantallaApagada: Bool = false
     private var gestionandoCambioTesla = false
     var engineActivo: Bool { audioEngine.isRunning }
     
@@ -124,7 +125,6 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
 
     func reanudarPorSistema() {
     guard pausadoPorSistema else { return }
-    let pantallaApagada = WearablesViewModel.instancia?.pantallEncendida == false
     guard pantallaApagada else { return }
     pausadoPorSistema = false
     try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
@@ -565,6 +565,7 @@ class WearablesViewModel: ObservableObject {
     pantallEncendida = true
     bidActivadoManual = false
     BidEscuchaManager.instancia?.pausarPorSistema()
+    BidEscuchaManager.instancia?.pantallaApagada = false
     actualizarEstadoBid()
 }
 
@@ -575,6 +576,7 @@ class WearablesViewModel: ObservableObject {
     if BidEscuchaManager.instancia?.engineActivo == true {
         URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=pantallaApagada-engineYaActivo-noTocar")!).resume()
         BidEscuchaManager.instancia?.pausadoPorSistema = false
+        BidEscuchaManager.instancia?.pantallaApagada = true
         return
     }
     actualizarEstadoBid()
