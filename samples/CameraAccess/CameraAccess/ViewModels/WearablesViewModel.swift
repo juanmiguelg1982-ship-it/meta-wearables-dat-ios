@@ -523,6 +523,7 @@ class WearablesViewModel: ObservableObject {
     }
 
     func toggleBidManual() {
+         URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=toggleBidManual-llamado")!).resume()
         bidActivadoManual.toggle()
         if teslaBluetoothConectado {
             if bidActivadoManual {
