@@ -387,7 +387,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
         Task { await onPregunta(transcripcion) }
     }
 
-    pprivate func pararEngine() {
+    private func pararEngine() {
     vigilanteTask?.cancel()
     arrancando = false
     envioTimer?.invalidate()
