@@ -16,6 +16,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, PKPushRegistryDelegate {
 
    func applicationDidEnterBackground(_ application: UIApplication) {
     activarSesionAudio()
+    silencioPlayer?.stop()
     silencioPlayer?.play()
     renovarBackgroundTask()
 }
