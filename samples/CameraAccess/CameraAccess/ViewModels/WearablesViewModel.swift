@@ -663,7 +663,7 @@ class WearablesViewModel: ObservableObject {
         }
 
         NotificationCenter.default.addObserver(
-            forName: UIApplication.didEnterBackgroundNotification,
+            forName: UIApplication.protectedDataWillBecomeUnavailableNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
