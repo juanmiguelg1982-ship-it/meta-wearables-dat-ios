@@ -4,7 +4,7 @@ import CoreBluetooth
 import MWDATCore
 import Speech
 import SwiftUI
-
+import CallKit
 final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private let onEstado: (String) -> Void
   private let onPregunta: (String) async -> Void
@@ -123,14 +123,17 @@ func reanudarPorTesla() {
         pararEngine()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     } else if tipo == .ended {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            guard !self.pausadoPorSistema else { return }
-            try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-            try? AVAudioSession.sharedInstance().setActive(true)
-            if self.enConversacion { self.iniciarEscuchaPregunta() }
-            else { self.iniciarEscuchaBID() }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        guard !self.pausadoPorSistema else { return }
+        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+            appDelegate.silencioPlayer?.play()
         }
+        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(true)
+        if self.enConversacion { self.iniciarEscuchaPregunta() }
+        else { self.iniciarEscuchaBID() }
     }
+}
 }
 
   @objc private func rutaAudioCambio(_ notification: Notification) {
@@ -519,6 +522,7 @@ class WearablesViewModel: ObservableObject {
 }
 
     bidEscucha?.arrancar()
+    LlamadaMonitor.shared.iniciar()
 
     Task {
       try? await Task.sleep(nanoseconds: 3_000_000_000)
@@ -672,9 +676,30 @@ class BluetoothMonitor: NSObject, CBCentralManagerDelegate {
   }
 
   func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
-    let nombre = peripheral.name ?? ""
-    if teslaNames.contains(where: { nombre.contains($0) }) {
-      onTeslaConectado?(false)
+        let nombre = peripheral.name ?? ""
+        if teslaNames.contains(where: { nombre.contains($0) }) {
+            onTeslaConectado?(false)
+        }
     }
-  }
+}
+
+class LlamadaMonitor: NSObject, CXCallObserverDelegate {
+    static let shared = LlamadaMonitor()
+    private let callObserver = CXCallObserver()
+
+    func iniciar() {
+        callObserver.setDelegate(self, queue: .main)
+    }
+
+    func callObserver(_ callObserver: CXCallObserver, callChanged call: CXCall) {
+        if call.hasEnded {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                if WearablesViewModel.instancia?.bidDebeEstarActivo == true {
+                    BidEscuchaManager.instancia?.reanudarPorSistema()
+                }
+            }
+        } else if !call.hasEnded && !call.isOnHold {
+            BidEscuchaManager.instancia?.pausarPorSistema()
+        }
+    }
 }
