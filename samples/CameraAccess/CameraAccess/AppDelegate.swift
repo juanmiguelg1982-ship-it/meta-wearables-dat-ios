@@ -26,6 +26,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, PKPushRegistryDelegate {
 
     func applicationWillEnterForeground(_ application: UIApplication) {}
 
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        silencioPlayer?.play()
+        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(true)
+    }
+
     private func configurarAudioBackground() {
         try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
         try? AVAudioSession.sharedInstance().setActive(true)
@@ -58,6 +64,16 @@ class AppDelegate: NSObject, UIApplicationDelegate, PKPushRegistryDelegate {
             silencioPlayer?.prepareToPlay()
             silencioPlayer?.play()
         } catch {}
+
+        NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] notification in
+            guard let info = notification.userInfo,
+                  let tipoValor = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let tipo = AVAudioSession.InterruptionType(rawValue: tipoValor),
+                  tipo == .ended else { return }
+            try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+            try? AVAudioSession.sharedInstance().setActive(true)
+            self?.silencioPlayer?.play()
+        }
     }
 
     private func configurarVoIPPush() {
