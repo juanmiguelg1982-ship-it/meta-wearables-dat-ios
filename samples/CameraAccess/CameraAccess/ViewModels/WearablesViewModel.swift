@@ -343,11 +343,13 @@ func reanudarPorTesla() {
     if resetearEngine {
         audioEngine = AVAudioEngine()
     }
-    func resetearEngineExterno() {
+}
+
+func resetearEngineExterno() {
     pararEngine(resetearEngine: true)
 }
-}
-  private func arrancarEngine() {
+
+private func arrancarEngine() {
     let inputNode = audioEngine.inputNode
     let formato = inputNode.outputFormat(forBus: 0)
     guard formato.sampleRate > 0 else { return }
