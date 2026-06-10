@@ -376,7 +376,7 @@ private func arrancarEngine() {
         }
     }
 }
-
+}
 @MainActor
 class WearablesViewModel: ObservableObject {
   @Published var devices: [DeviceIdentifier]
