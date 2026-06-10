@@ -339,7 +339,7 @@ URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=
     Task { await onPregunta(transcripcion) }
   }
 
-  pprivate func pararEngine() {
+  private func pararEngine() {
     vigilanteTask?.cancel()
     envioTimer?.invalidate()
     recognitionTask?.cancel()
