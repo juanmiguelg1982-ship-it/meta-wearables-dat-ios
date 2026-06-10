@@ -122,7 +122,7 @@ func reanudarPorTesla() {
     if tipo == .began {
         let msg = "INTERRUPCION-began"
         URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
-        pararEngine(detener: true)
+        pararEngine()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     } else if tipo == .ended {
         let msg = "INTERRUPCION-ended"
@@ -337,7 +337,7 @@ func reanudarPorTesla() {
     Task { await onPregunta(transcripcion) }
   }
 
-  private func pararEngine(detener: Bool = false) {
+  pprivate func pararEngine() {
     vigilanteTask?.cancel()
     envioTimer?.invalidate()
     recognitionTask?.cancel()
@@ -346,7 +346,6 @@ func reanudarPorTesla() {
     recognitionRequest = nil
     if audioEngine.isRunning {
         audioEngine.inputNode.removeTap(onBus: 0)
-        if detener { audioEngine.stop() }
     } else {
         audioEngine.inputNode.removeTap(onBus: 0)
     }
