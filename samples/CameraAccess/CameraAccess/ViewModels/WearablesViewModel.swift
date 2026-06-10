@@ -120,20 +120,19 @@ func reanudarPorTesla() {
           let tipoValor = info[AVAudioSessionInterruptionTypeKey] as? UInt,
           let tipo = AVAudioSession.InterruptionType(rawValue: tipoValor) else { return }
     if tipo == .began {
-    let msg = "INTERRUPCION-began"
-    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
-    vigilanteTask?.cancel()
-    recognitionTask?.cancel()
-    recognitionTask = nil
-    recognitionRequest?.endAudio()
-    recognitionRequest = nil
-    if audioEngine.isRunning {
-        audioEngine.inputNode.removeTap(onBus: 0)
-        audioEngine.stop()
-    }
-    audioEngine = AVAudioEngine()
-    try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-}
+        let msg = "INTERRUPCION-began"
+        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
+        vigilanteTask?.cancel()
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        recognitionRequest?.endAudio()
+        recognitionRequest = nil
+        if audioEngine.isRunning {
+            audioEngine.inputNode.removeTap(onBus: 0)
+            audioEngine.stop()
+        }
+        audioEngine = AVAudioEngine()
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     } else if tipo == .ended {
         let msg = "INTERRUPCION-ended"
         URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
@@ -149,7 +148,6 @@ func reanudarPorTesla() {
         }
     }
 }
-
   @objc private func rutaAudioCambio(_ notification: Notification) {
     let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
     let hayTesla = outputs.contains { output in
