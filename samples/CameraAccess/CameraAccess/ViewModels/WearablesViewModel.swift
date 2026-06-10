@@ -124,15 +124,6 @@ func reanudarPorTesla() {
         URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
         pararEngine()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 35.0) {
-            guard !self.pausadoPorSistema, !self.audioEngine.isRunning else { return }
-            try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-            try? AVAudioSession.sharedInstance().setActive(true)
-            if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
-                appDelegate.silencioPlayer?.play()
-            }
-            self.iniciarEscuchaBID()
-        }
     } else if tipo == .ended {
         let msg = "INTERRUPCION-ended"
         URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
@@ -148,7 +139,6 @@ func reanudarPorTesla() {
         }
     }
 }
-
 
   @objc private func rutaAudioCambio(_ notification: Notification) {
     let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
