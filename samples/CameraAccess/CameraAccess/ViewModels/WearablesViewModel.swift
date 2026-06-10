@@ -728,16 +728,20 @@ class LlamadaMonitor: NSObject, CXCallObserverDelegate {
     }
 
    func callObserver(_ callObserver: CXCallObserver, callChanged call: CXCall) {
-    if call.hasEnded {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            let msg = "LLAMADA-ended-pausado:\(BidEscuchaManager.instancia?.pausadoPorSistema == true)"
-            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
-            guard WearablesViewModel.instancia?.bidDebeEstarActivo == true else { return }
-            try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-            try? AVAudioSession.sharedInstance().setActive(true)
-            BidEscuchaManager.instancia?.resetearParaLlamada()
-            BidEscuchaManager.instancia?.iniciarEscuchaBID()
-        }
+   if call.hasEnded {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+        let msg = "LLAMADA-ended-pausado:\(BidEscuchaManager.instancia?.pausadoPorSistema == true)"
+        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
+        let activo = WearablesViewModel.instancia?.bidDebeEstarActivo == true
+        let msg2 = "LLAMADA-bidDebeEstarActivo:\(activo)"
+        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg2)")!).resume()
+        guard activo else { return }
+        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(true)
+        BidEscuchaManager.instancia?.resetearParaLlamada()
+        BidEscuchaManager.instancia?.iniciarEscuchaBID()
+    }
+}
     } else if !call.hasEnded && !call.isOnHold {
         let msg = "LLAMADA-iniciada-pausado:\(BidEscuchaManager.instancia?.pausadoPorSistema == true)"
         URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
