@@ -131,13 +131,13 @@ func reanudarPorTesla() {
             audioEngine.inputNode.removeTap(onBus: 0)
             audioEngine.stop()
         }
-        audioEngine = AVAudioEngine()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     } else if tipo == .ended {
         let msg = "INTERRUPCION-ended"
         URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
             guard !self.pausadoPorSistema else { return }
+            self.audioEngine = AVAudioEngine()
             if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
                 appDelegate.silencioPlayer?.play()
             }
