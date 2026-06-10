@@ -339,21 +339,22 @@ func reanudarPorTesla() {
     if audioEngine.isRunning { audioEngine.inputNode.removeTap(onBus: 0) }
   }
 
-  private func arrancarEngine() {
+ private func arrancarEngine() {
     let inputNode = audioEngine.inputNode
     let formato = inputNode.outputFormat(forBus: 0)
     guard formato.sampleRate > 0 else { return }
+    inputNode.removeTap(onBus: 0)
     inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
-      self?.recognitionRequest?.append(buffer)
+        self?.recognitionRequest?.append(buffer)
     }
     if !audioEngine.isRunning {
-      do {
-        try audioEngine.start()
-      } catch {
-        audioEngine.inputNode.removeTap(onBus: 0)
-      }
+        do {
+            try audioEngine.start()
+        } catch {
+            inputNode.removeTap(onBus: 0)
+        }
     }
-  }
+}
 }
 
 @MainActor
