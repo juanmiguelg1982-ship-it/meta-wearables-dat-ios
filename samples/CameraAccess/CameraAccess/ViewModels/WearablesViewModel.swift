@@ -187,6 +187,8 @@ func reanudarPorTesla() {
     pararEngine()
     try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
     try? AVAudioSession.sharedInstance().setActive(true)
+let msgSesion = "SESION-activa"
+URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msgSesion)")!).resume()
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
     guard let req = recognitionRequest else { return }
     req.shouldReportPartialResults = true
@@ -351,9 +353,11 @@ func reanudarPorTesla() {
     }
 }
 
- private func arrancarEngine() {
+private func arrancarEngine() {
     let inputNode = audioEngine.inputNode
     let formato = inputNode.outputFormat(forBus: 0)
+    let msg0 = "ENGINE-sampleRate-\(formato.sampleRate)"
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg0)")!).resume()
     guard formato.sampleRate > 0 else { return }
     inputNode.removeTap(onBus: 0)
     inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
@@ -362,11 +366,15 @@ func reanudarPorTesla() {
     if !audioEngine.isRunning {
         do {
             try audioEngine.start()
+            let msg = "ENGINE-arrancado-ok"
+            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
         } catch {
+            let msg = "ENGINE-error-\(error.localizedDescription)"
+            let msgEnc = msg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? msg
+            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msgEnc)")!).resume()
             inputNode.removeTap(onBus: 0)
         }
     }
-}
 }
 
 @MainActor
