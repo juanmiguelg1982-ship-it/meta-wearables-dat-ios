@@ -91,7 +91,10 @@ func reanudarPorTesla() {
     pausadoPorSistema = false
     reanudar()
   }
-
+func resetearParaLlamada() {
+    pausadoPorSistema = false
+    audioEngine = AVAudioEngine()
+}
   func pausar() {
     guard !escuchandoOk else { return }
     escuchandoOk = true
@@ -732,7 +735,8 @@ class LlamadaMonitor: NSObject, CXCallObserverDelegate {
             guard WearablesViewModel.instancia?.bidDebeEstarActivo == true else { return }
             try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
             try? AVAudioSession.sharedInstance().setActive(true)
-            BidEscuchaManager.instancia?.reanudarPorSistema()
+            BidEscuchaManager.instancia?.resetearParaLlamada()
+            BidEscuchaManager.instancia?.iniciarEscuchaBID()
         }
     } else if !call.hasEnded && !call.isOnHold {
         let msg = "LLAMADA-iniciada-pausado:\(BidEscuchaManager.instancia?.pausadoPorSistema == true)"
