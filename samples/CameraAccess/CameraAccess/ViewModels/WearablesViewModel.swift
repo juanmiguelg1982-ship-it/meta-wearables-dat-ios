@@ -120,18 +120,16 @@ func reanudarPorTesla() {
           let tipoValor = info[AVAudioSessionInterruptionTypeKey] as? UInt,
           let tipo = AVAudioSession.InterruptionType(rawValue: tipoValor) else { return }
     if tipo == .began {
-        pararEngine()
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-    } else if tipo == .ended {
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-        guard !self.pausadoPorSistema else { return }
+    pararEngine()
+    try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 35.0) {
+        guard !self.pausadoPorSistema, !self.audioEngine.isRunning else { return }
+        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(true)
         if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
             appDelegate.silencioPlayer?.play()
         }
-        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-        try? AVAudioSession.sharedInstance().setActive(true)
-        if self.enConversacion { self.iniciarEscuchaPregunta() }
-        else { self.iniciarEscuchaBID() }
+        self.iniciarEscuchaBID()
     }
 }
 }
@@ -139,14 +137,18 @@ func reanudarPorTesla() {
   @objc private func rutaAudioCambio(_ notification: Notification) {
     let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
     let hayTesla = outputs.contains { output in
-      let nombre = output.portName.lowercased()
-      return nombre.contains("tesla") || nombre.contains("model 3") || nombre.contains("model s") || nombre.contains("model x")
+        let nombre = output.portName.lowercased()
+        return nombre.contains("tesla") || nombre.contains("model 3") || nombre.contains("model s") || nombre.contains("model x")
     }
-    DispatchQueue.main.async {
-      WearablesViewModel.instancia?.teslaBluetoothConectado = hayTesla
-      WearablesViewModel.instancia?.actualizarEstadoBid()
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        WearablesViewModel.instancia?.teslaBluetoothConectado = hayTesla
+        WearablesViewModel.instancia?.actualizarEstadoBid()
+        guard !self.pausadoPorSistema, !self.audioEngine.isRunning else { return }
+        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(true)
+        self.iniciarEscuchaBID()
     }
-  }
+}
 
   private func arrancarVigilante() {
     vigilanteTask?.cancel()
@@ -692,14 +694,15 @@ class LlamadaMonitor: NSObject, CXCallObserverDelegate {
     }
 
     func callObserver(_ callObserver: CXCallObserver, callChanged call: CXCall) {
-        if call.hasEnded {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                if WearablesViewModel.instancia?.bidDebeEstarActivo == true {
-                    BidEscuchaManager.instancia?.reanudarPorSistema()
-                }
-            }
-        } else if !call.hasEnded && !call.isOnHold {
-            BidEscuchaManager.instancia?.pausarPorSistema()
+    if call.hasEnded {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            guard WearablesViewModel.instancia?.bidDebeEstarActivo == true else { return }
+            try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+            try? AVAudioSession.sharedInstance().setActive(true)
+            BidEscuchaManager.instancia?.reanudarPorSistema()
         }
+    } else if !call.hasEnded && !call.isOnHold {
+        BidEscuchaManager.instancia?.pausarPorSistema()
     }
+}
 }
