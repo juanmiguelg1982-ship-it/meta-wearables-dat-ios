@@ -127,7 +127,7 @@ func reanudarPorTesla() {
     } else if tipo == .ended {
         let msg = "INTERRUPCION-ended"
         URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
             guard !self.pausadoPorSistema else { return }
             if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
                 appDelegate.silencioPlayer?.play()
@@ -533,19 +533,19 @@ class WearablesViewModel: ObservableObject {
     while true {
         try? await Task.sleep(nanoseconds: 5_000_000_000)
         await comprobarVozPendiente()
-        await MainActor.run {
-            if self.bidDebeEstarActivo && BidEscuchaManager.instancia?.pausadoPorSistema == true {
-                BidEscuchaManager.instancia?.reanudarPorSistema()
+        if self.bidDebeEstarActivo && BidEscuchaManager.instancia?.pausadoPorSistema == false && BidEscuchaManager.instancia?.engineActivo == false {
+            let msg = "RECOVERY-loop-disparado"
+            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+            try? AVAudioSession.sharedInstance().setActive(true)
+            await MainActor.run {
+                BidEscuchaManager.instancia?.iniciarEscuchaBID()
             }
-            if self.bidDebeEstarActivo && BidEscuchaManager.instancia?.pausadoPorSistema == false && BidEscuchaManager.instancia?.engineActivo == false {
-    let msg = "RECOVERY-loop-disparado"
-    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
-    BidEscuchaManager.instancia?.iniciarEscuchaBID()
-}
         }
     }
 }
-
     bidEscucha?.arrancar()
     LlamadaMonitor.shared.iniciar()
 
