@@ -726,7 +726,7 @@ class LlamadaMonitor: NSObject, CXCallObserverDelegate {
 
    func callObserver(_ callObserver: CXCallObserver, callChanged call: CXCall) {
     if call.hasEnded {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
             let msg = "LLAMADA-ended-pausado:\(BidEscuchaManager.instancia?.pausadoPorSistema == true)"
             URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
             guard WearablesViewModel.instancia?.bidDebeEstarActivo == true else { return }
