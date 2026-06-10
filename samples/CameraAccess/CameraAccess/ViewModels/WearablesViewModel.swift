@@ -212,7 +212,7 @@ func reanudarPorTesla() {
       }
       if error != nil {
         guard !self.faseEscucha, !self.enConversacion else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
           guard !self.enConversacion, !self.grabandoRespuesta else { return }
           self.iniciarEscuchaBID()
         }
