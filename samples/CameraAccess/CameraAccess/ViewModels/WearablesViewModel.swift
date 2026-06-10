@@ -129,7 +129,7 @@ func reanudarPorTesla() {
         recognitionRequest = nil
         if audioEngine.isRunning {
             audioEngine.inputNode.removeTap(onBus: 0)
-            audioEngine.stop()
+            
         }
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     } else if tipo == .ended {
