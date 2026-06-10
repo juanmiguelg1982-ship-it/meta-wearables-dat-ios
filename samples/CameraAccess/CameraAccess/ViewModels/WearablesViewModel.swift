@@ -115,24 +115,40 @@ func reanudarPorTesla() {
     arrancarEngine()
   }
 
-  @objc private func manejarInterrupcionAudio(_ notification: Notification) {
+ @objc private func manejarInterrupcionAudio(_ notification: Notification) {
     guard let info = notification.userInfo,
           let tipoValor = info[AVAudioSessionInterruptionTypeKey] as? UInt,
           let tipo = AVAudioSession.InterruptionType(rawValue: tipoValor) else { return }
     if tipo == .began {
-    pararEngine()
-    try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-    DispatchQueue.main.asyncAfter(deadline: .now() + 35.0) {
-        guard !self.pausadoPorSistema, !self.audioEngine.isRunning else { return }
-        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-        try? AVAudioSession.sharedInstance().setActive(true)
-        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
-            appDelegate.silencioPlayer?.play()
+        let msg = "INTERRUPCION-began"
+        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
+        pararEngine()
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 35.0) {
+            guard !self.pausadoPorSistema, !self.audioEngine.isRunning else { return }
+            try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+            try? AVAudioSession.sharedInstance().setActive(true)
+            if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+                appDelegate.silencioPlayer?.play()
+            }
+            self.iniciarEscuchaBID()
         }
-        self.iniciarEscuchaBID()
+    } else if tipo == .ended {
+        let msg = "INTERRUPCION-ended"
+        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            guard !self.pausadoPorSistema else { return }
+            if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+                appDelegate.silencioPlayer?.play()
+            }
+            try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+            try? AVAudioSession.sharedInstance().setActive(true)
+            if self.enConversacion { self.iniciarEscuchaPregunta() }
+            else { self.iniciarEscuchaBID() }
+        }
     }
 }
-}
+
 
   @objc private func rutaAudioCambio(_ notification: Notification) {
     let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
@@ -169,6 +185,8 @@ func reanudarPorTesla() {
   }
 
     func iniciarEscuchaBID() {
+    let msg2 = "iniciarEscuchaBID-llamado"
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg2)")!).resume()
     guard !pausadoPorSistema else { return }
     let msg = "engine:\(audioEngine.isRunning) conv:\(enConversacion) grab:\(grabandoRespuesta)"
     let msgEnc = msg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? msg
@@ -518,8 +536,10 @@ class WearablesViewModel: ObservableObject {
                 BidEscuchaManager.instancia?.reanudarPorSistema()
             }
             if self.bidDebeEstarActivo && BidEscuchaManager.instancia?.pausadoPorSistema == false && BidEscuchaManager.instancia?.engineActivo == false {
-                BidEscuchaManager.instancia?.iniciarEscuchaBID()
-            }
+    let msg = "RECOVERY-loop-disparado"
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
+    BidEscuchaManager.instancia?.iniciarEscuchaBID()
+}
         }
     }
 }
