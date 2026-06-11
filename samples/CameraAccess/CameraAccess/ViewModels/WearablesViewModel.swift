@@ -139,21 +139,21 @@ func resetearEngine() {
             
         }
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-    } else if tipo == .ended {
-        let msg = "INTERRUPCION-ended"
-        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-            guard !self.pausadoPorSistema else { return }
-            self.audioEngine = AVAudioEngine()
-            if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
-                appDelegate.silencioPlayer?.play()
-            }
-            try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-            try? AVAudioSession.sharedInstance().setActive(true)
-            if self.enConversacion { self.iniciarEscuchaPregunta() }
-            else { self.iniciarEscuchaBID() }
+   } else if tipo == .ended {
+    let msg = "INTERRUPCION-ended"
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+        self.pausadoPorSistema = false
+        self.audioEngine = AVAudioEngine()
+        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+            appDelegate.silencioPlayer?.play()
         }
+        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(true)
+        if self.enConversacion { self.iniciarEscuchaPregunta() }
+        else { self.iniciarEscuchaBID() }
     }
+}
 }
   @objc private func rutaAudioCambio(_ notification: Notification) {
     let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
