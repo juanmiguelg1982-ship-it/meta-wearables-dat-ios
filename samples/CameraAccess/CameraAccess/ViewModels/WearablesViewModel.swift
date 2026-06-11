@@ -328,16 +328,17 @@ URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=
     }
   }
 
-  private func terminarConversacion() {
+ private func terminarConversacion() {
     envioTimer?.invalidate()
     conversacionTimer?.invalidate()
     grabandoRespuesta = false
     faseEscucha = false
+    enConversacion = false
     pararEngine()
     reproducirPitido()
     onEstado("Conversacion terminada")
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.iniciarEscuchaBID() }
-  }
+}
 
   private func pararYEnviar() {
     guard grabandoRespuesta else { return }
