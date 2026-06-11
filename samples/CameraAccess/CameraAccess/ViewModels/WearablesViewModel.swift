@@ -91,7 +91,10 @@ func reanudarPorTesla() {
     pausadoPorSistema = false
     reanudar()
   }
-func resetearParaLlamada() {
+func resetearEngine() {
+    audioEngine = AVAudioEngine()
+}
+  func resetearParaLlamada() {
     pausadoPorSistema = false
     audioEngine = AVAudioEngine()
 }
@@ -551,7 +554,7 @@ class WearablesViewModel: ObservableObject {
     try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     try? await Task.sleep(nanoseconds: 3_000_000_000)
     await MainActor.run {
-        BidEscuchaManager.instancia?.audioEngine = AVAudioEngine()
+        BidEscuchaManager.instancia?.resetearEngine()
     }
     try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
     try? AVAudioSession.sharedInstance().setActive(true)
