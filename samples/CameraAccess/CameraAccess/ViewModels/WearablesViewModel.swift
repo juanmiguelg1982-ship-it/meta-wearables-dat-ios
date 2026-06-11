@@ -227,8 +227,8 @@ URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=
     }
 }
     }
-    arrancarEngine()
     arrancando = false
+    arrancarEngine()
     onEstado("Escuchando... di OYE")
     arrancarVigilante()
   }
