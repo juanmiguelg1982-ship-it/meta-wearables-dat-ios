@@ -24,6 +24,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private var ultimoResultado: Date = Date()
   private var vigilanteTask: Task<Void, Never>?
   private var escuchandoOk = false
+  private var arrancando = false
   var pausadoPorSistema = false
   var engineActivo: Bool { audioEngine.isRunning }
   
