@@ -546,16 +546,19 @@ class WearablesViewModel: ObservableObject {
         try? await Task.sleep(nanoseconds: 5_000_000_000)
         await comprobarVozPendiente()
         if self.bidDebeEstarActivo && BidEscuchaManager.instancia?.pausadoPorSistema == false && BidEscuchaManager.instancia?.engineActivo == false {
-            let msg = "RECOVERY-loop-disparado"
-            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
-            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-            try? AVAudioSession.sharedInstance().setActive(true)
-            await MainActor.run {
-                BidEscuchaManager.instancia?.iniciarEscuchaBID()
-            }
-        }
+    let msg = "RECOVERY-loop-disparado"
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
+    try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    try? await Task.sleep(nanoseconds: 3_000_000_000)
+    await MainActor.run {
+        BidEscuchaManager.instancia?.audioEngine = AVAudioEngine()
+    }
+    try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+    try? AVAudioSession.sharedInstance().setActive(true)
+    await MainActor.run {
+        BidEscuchaManager.instancia?.iniciarEscuchaBID()
+    }
+}
     }
 }
     bidEscucha?.arrancar()
