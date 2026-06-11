@@ -191,8 +191,9 @@ func resetearEngine() {
 
     func iniciarEscuchaBID() {
     let msg2 = "iniciarEscuchaBID-llamado"
-    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg2)")!).resume()
-    guard !pausadoPorSistema else { return }
+URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg2)")!).resume()
+guard !pausadoPorSistema, !arrancando else { return }
+arrancando = true
     let msg = "engine:\(audioEngine.isRunning) conv:\(enConversacion) grab:\(grabandoRespuesta)"
     let msgEnc = msg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? msg
     URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msgEnc)")!).resume()
@@ -225,6 +226,7 @@ URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=
     }
 }
     }
+    arrancando = false
     arrancarEngine()
     onEstado("Escuchando... di OYE")
     arrancarVigilante()
