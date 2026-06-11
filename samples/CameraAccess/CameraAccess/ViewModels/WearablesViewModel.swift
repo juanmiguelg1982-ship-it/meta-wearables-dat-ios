@@ -555,7 +555,7 @@ class WearablesViewModel: ObservableObject {
     let msg = "RECOVERY-loop-disparado"
     URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
     try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-    try? await Task.sleep(nanoseconds: 3_000_000_000)
+    try? await Task.sleep(nanoseconds: 6_000_000_000)
     await MainActor.run {
         BidEscuchaManager.instancia?.resetearEngine()
     }
