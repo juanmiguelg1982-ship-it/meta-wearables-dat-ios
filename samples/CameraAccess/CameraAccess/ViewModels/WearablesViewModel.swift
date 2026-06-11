@@ -125,6 +125,7 @@ func resetearParaLlamada() {
     if tipo == .began {
         let msg = "INTERRUPCION-began"
         URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
+      pausadoPorSistema = true
         vigilanteTask?.cancel()
         recognitionTask?.cancel()
         recognitionTask = nil
