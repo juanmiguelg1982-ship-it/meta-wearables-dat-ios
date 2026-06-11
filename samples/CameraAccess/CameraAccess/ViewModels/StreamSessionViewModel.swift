@@ -55,7 +55,9 @@ extension BidAudioPlayer: AVAudioPlayerDelegate {
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
       NotificationCenter.default.post(name: NSNotification.Name("BIDAudioTerminado"), object: nil)
       BidEscuchaManager.reanudarEngine()
-      BidEscuchaManager.instancia?.reiniciarTimerConversacion()
+      if BidEscuchaManager.instancia?.enConversacion == true {
+    BidEscuchaManager.instancia?.reiniciarTimerConversacion()
+}
     }
   }
 }
