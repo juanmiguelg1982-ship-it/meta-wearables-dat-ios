@@ -193,7 +193,11 @@ func resetearEngine() {
     func iniciarEscuchaBID() {
     let msg2 = "iniciarEscuchaBID-llamado"
 URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg2)")!).resume()
-guard !pausadoPorSistema, !arrancando else { return }
+guard !pausadoPorSistema, !arrancando else {
+    let msgBlock = "iniciarEscuchaBID-bloqueado-pausado:\(pausadoPorSistema)-arrancando:\(arrancando)"
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msgBlock.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? msgBlock)")!).resume()
+    return
+}
 arrancando = true
     let msg = "engine:\(audioEngine.isRunning) conv:\(enConversacion) grab:\(grabandoRespuesta)"
     let msgEnc = msg.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? msg
