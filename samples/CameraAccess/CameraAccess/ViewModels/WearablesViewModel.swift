@@ -165,7 +165,7 @@ func resetearEngine() {
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
         WearablesViewModel.instancia?.teslaBluetoothConectado = hayTesla
         WearablesViewModel.instancia?.actualizarEstadoBid()
-        guard !self.pausadoPorSistema, !self.audioEngine.isRunning else { return }
+       guard !self.pausadoPorSistema, !self.audioEngine.isRunning, !self.arrancando else { return }
         try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
         try? AVAudioSession.sharedInstance().setActive(true)
         self.iniciarEscuchaBID()
