@@ -214,12 +214,12 @@ URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=
         }
       }
       if error != nil {
-        guard !self.faseEscucha, !self.enConversacion else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
-          guard !self.enConversacion, !self.grabandoRespuesta else { return }
-          self.iniciarEscuchaBID()
-        }
-      }
+    guard !self.faseEscucha, !self.enConversacion else { return }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
+        guard !self.enConversacion, !self.grabandoRespuesta, !self.pausadoPorSistema else { return }
+        self.iniciarEscuchaBID()
+    }
+}
     }
     arrancarEngine()
     onEstado("Escuchando... di OYE")
