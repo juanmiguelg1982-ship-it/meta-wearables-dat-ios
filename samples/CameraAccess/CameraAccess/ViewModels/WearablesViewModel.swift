@@ -166,25 +166,23 @@ func resetearEngine() {
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
         WearablesViewModel.instancia?.teslaBluetoothConectado = hayTesla
         WearablesViewModel.instancia?.actualizarEstadoBid()
-        guard !self.pausadoPorSistema, !self.audioEngine.isRunning else { return }
+        guard !self.pausadoPorSistema, !self.audioEngine.isRunning, !self.arrancando else { return }
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
         try? AVAudioSession.sharedInstance().setActive(true)
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-try? AVAudioSession.sharedInstance().setActive(true)
-if let entradaBT = AVAudioSession.sharedInstance().availableInputs?.first(where: { $0.portType == .bluetoothHFP }) {
-    try? AVAudioSession.sharedInstance().setPreferredInput(entradaBT)
-}
-if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
-    appDelegate.silencioPlayer?.play()
-}
-let entrada = AVAudioSession.sharedInstance().currentRoute.inputs.first?.portName ?? "ninguna"
-let msgRuta = "RUTA-input-\(entrada)"
-URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msgRuta.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? msgRuta)")!).resume()
-self.audioEngine = AVAudioEngine()
-self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
-self.speechRecognizer?.delegate = self
-self.iniciarEscuchaBID()
+        if let entradaBT = AVAudioSession.sharedInstance().availableInputs?.first(where: { $0.portType == .bluetoothHFP }) {
+            try? AVAudioSession.sharedInstance().setPreferredInput(entradaBT)
+        }
+        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+            appDelegate.silencioPlayer?.play()
+        }
+        let entrada = AVAudioSession.sharedInstance().currentRoute.inputs.first?.portName ?? "ninguna"
+        let msgRuta = "RUTA-input-\(entrada)"
+        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msgRuta.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? msgRuta)")!).resume()
+        self.audioEngine = AVAudioEngine()
+        self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
+        self.speechRecognizer?.delegate = self
+        self.iniciarEscuchaBID()
     }
 }
 
