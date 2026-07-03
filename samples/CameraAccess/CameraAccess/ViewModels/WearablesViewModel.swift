@@ -25,6 +25,7 @@ final class BidEscuchaManager: NSObject, SFSpeechRecognizerDelegate {
   private var vigilanteTask: Task<Void, Never>?
   private var escuchandoOk = false
   private var arrancando = false
+var ultimoBuffer = Date.distantPast
   var pausadoPorSistema = false
   var engineActivo: Bool { audioEngine.isRunning }
   
@@ -409,6 +410,7 @@ private func arrancarEngine() {
     var contadorBuffers = 0
     inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
         contadorBuffers += 1
+        self?.ultimoBuffer = Date()
         if contadorBuffers == 1 || contadorBuffers % 150 == 0 {
             var nivel: Float = 0
             if let datos = buffer.floatChannelData?[0] {
@@ -589,7 +591,27 @@ class WearablesViewModel: ObservableObject {
     while true {
         try? await Task.sleep(nanoseconds: 5_000_000_000)
         await comprobarVozPendiente()
-        if self.bidDebeEstarActivo && BidEscuchaManager.instancia?.pausadoPorSistema == false && BidEscuchaManager.instancia?.engineActivo == false {
+      let audioParado = BidEscuchaManager.instancia?.engineActivo == true
+            && BidEscuchaManager.instancia?.pausadoPorSistema == false
+            && Date().timeIntervalSince(BidEscuchaManager.instancia?.ultimoBuffer ?? .distantPast) > 10
+        if audioParado {
+            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=AUDIO-parado-reset")!).resume()
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+            try? AVAudioSession.sharedInstance().setActive(true)
+            if let entradaBT = AVAudioSession.sharedInstance().availableInputs?.first(where: { $0.portType == .bluetoothHFP }) {
+                try? AVAudioSession.sharedInstance().setPreferredInput(entradaBT)
+            }
+            await MainActor.run {
+                if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+                    appDelegate.silencioPlayer?.play()
+                }
+                BidEscuchaManager.instancia?.resetearEngine()
+                BidEscuchaManager.instancia?.iniciarEscuchaBID()
+            }
+        }  
+      if self.bidDebeEstarActivo && BidEscuchaManager.instancia?.pausadoPorSistema == false && BidEscuchaManager.instancia?.engineActivo == false {
     let msg = "RECOVERY-loop-disparado"
     URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg)")!).resume()
     try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
