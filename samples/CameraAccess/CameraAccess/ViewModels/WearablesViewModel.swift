@@ -410,7 +410,12 @@ private func arrancarEngine() {
     inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
         contadorBuffers += 1
         if contadorBuffers == 1 || contadorBuffers % 150 == 0 {
-            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=AUDIO-buffer-\(contadorBuffers)")!).resume()
+            var nivel: Float = 0
+            if let datos = buffer.floatChannelData?[0] {
+                for i in 0..<Int(buffer.frameLength) { nivel = max(nivel, abs(datos[i])) }
+            }
+            let msgNivel = "AUDIO-buffer-\(contadorBuffers)-nivel-\(nivel)"
+            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msgNivel.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? msgNivel)")!).resume()
         }
         self?.recognitionRequest?.append(buffer)
     }
