@@ -171,6 +171,9 @@ func resetearEngine() {
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
 try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
 try? AVAudioSession.sharedInstance().setActive(true)
+if let entradaBT = AVAudioSession.sharedInstance().availableInputs?.first(where: { $0.portType == .bluetoothHFP }) {
+    try? AVAudioSession.sharedInstance().setPreferredInput(entradaBT)
+}
 if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
     appDelegate.silencioPlayer?.play()
 }
