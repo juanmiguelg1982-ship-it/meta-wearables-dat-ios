@@ -168,7 +168,9 @@ func resetearEngine() {
         guard !self.pausadoPorSistema, !self.audioEngine.isRunning else { return }
         try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
         try? AVAudioSession.sharedInstance().setActive(true)
-        self.iniciarEscuchaBID()
+        self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
+self.speechRecognizer?.delegate = self
+self.iniciarEscuchaBID()
     }
 }
 
