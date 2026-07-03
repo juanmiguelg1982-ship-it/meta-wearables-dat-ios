@@ -581,7 +581,7 @@ class WearablesViewModel: ObservableObject {
       await withCheckedContinuation { continuation in
         var observador: NSObjectProtocol?
         var resumido = false
-        observador = (
+         observador = NotificationCenter.default.addObserver(
           forName: NSNotification.Name("BIDAudioTerminado"),
           object: nil,
           queue: .main
