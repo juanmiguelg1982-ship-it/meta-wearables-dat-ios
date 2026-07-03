@@ -394,7 +394,12 @@ private func arrancarEngine() {
     URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg0)")!).resume()
     guard formato.sampleRate > 0 else { return }
     inputNode.removeTap(onBus: 0)
+    var primerBuffer = true
     inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
+        if primerBuffer {
+            primerBuffer = false
+            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=AUDIO-llegando")!).resume()
+        }
         self?.recognitionRequest?.append(buffer)
     }
     if !audioEngine.isRunning {
