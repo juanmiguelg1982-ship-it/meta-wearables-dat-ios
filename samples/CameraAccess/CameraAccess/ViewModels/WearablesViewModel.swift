@@ -185,18 +185,6 @@ self.audioEngine = AVAudioEngine()
 self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
 self.speechRecognizer?.delegate = self
 self.iniciarEscuchaBID()
-DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
-    let entradaActual = AVAudioSession.sharedInstance().currentRoute.inputs.first?.portType
-    let hayGafas = AVAudioSession.sharedInstance().availableInputs?.contains(where: { $0.portType == .bluetoothHFP }) ?? false
-    if hayGafas && entradaActual != .bluetoothHFP {
-        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=RUTA-reintento")!).resume()
-        if let entradaBT = AVAudioSession.sharedInstance().availableInputs?.first(where: { $0.portType == .bluetoothHFP }) {
-            try? AVAudioSession.sharedInstance().setPreferredInput(entradaBT)
-        }
-        self.audioEngine = AVAudioEngine()
-        self.iniciarEscuchaBID()
-    }
-}
     }
 }
 
