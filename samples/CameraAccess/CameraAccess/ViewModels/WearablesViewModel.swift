@@ -163,26 +163,40 @@ func resetearEngine() {
         let nombre = output.portName.lowercased()
         return nombre.contains("tesla") || nombre.contains("model 3") || nombre.contains("model s") || nombre.contains("model x")
     }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+    DispatchQueue.main.async {
         WearablesViewModel.instancia?.teslaBluetoothConectado = hayTesla
         WearablesViewModel.instancia?.actualizarEstadoBid()
-        guard !self.pausadoPorSistema, !self.audioEngine.isRunning, !self.arrancando else { return }
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
-        try? AVAudioSession.sharedInstance().setActive(true)
-        if let entradaBT = AVAudioSession.sharedInstance().availableInputs?.first(where: { $0.portType == .bluetoothHFP }) {
-            try? AVAudioSession.sharedInstance().setPreferredInput(entradaBT)
+    }
+    Task { @MainActor in
+        // Esperar hasta 15s a que iOS tenga lista una entrada valida (gafas o iPhone)
+        var intentos = 0
+        while intentos < 15 {
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            intentos += 1
+            guard !self.pausadoPorSistema, !self.arrancando else { return }
+            let entradas = AVAudioSession.sharedInstance().availableInputs ?? []
+            let gafas = entradas.first(where: { $0.portType == .bluetoothHFP })
+            // Si hay gafas disponibles, o llevamos 8s y no aparecen (usar iPhone), actuamos
+            if gafas != nil || intentos >= 8 {
+                if self.audioEngine.isRunning { return }
+                try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+                try? AVAudioSession.sharedInstance().setActive(true)
+                if let g = gafas {
+                    try? AVAudioSession.sharedInstance().setPreferredInput(g)
+                }
+                if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+                    appDelegate.silencioPlayer?.play()
+                }
+                let entrada = AVAudioSession.sharedInstance().currentRoute.inputs.first?.portName ?? "ninguna"
+                let msgRuta = "RUTA-input-\(entrada)-intento-\(intentos)"
+                URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msgRuta.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? msgRuta)")!).resume()
+                self.audioEngine = AVAudioEngine()
+                self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
+                self.speechRecognizer?.delegate = self
+                self.iniciarEscuchaBID()
+                return
+            }
         }
-        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
-            appDelegate.silencioPlayer?.play()
-        }
-        let entrada = AVAudioSession.sharedInstance().currentRoute.inputs.first?.portName ?? "ninguna"
-        let msgRuta = "RUTA-input-\(entrada)"
-        URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msgRuta.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? msgRuta)")!).resume()
-        self.audioEngine = AVAudioEngine()
-        self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
-        self.speechRecognizer?.delegate = self
-        self.iniciarEscuchaBID()
     }
 }
 
