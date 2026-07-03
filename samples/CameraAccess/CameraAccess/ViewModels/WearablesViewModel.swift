@@ -57,6 +57,7 @@ var ultimoBuffer = Date.distantPast
     try? AVAudioSession.sharedInstance().setActive(true)
     NotificationCenter.default.addObserver(self, selector: #selector(manejarInterrupcionAudio), name: AVAudioSession.interruptionNotification, object: nil)
     NotificationCenter.default.addObserver(self, selector: #selector(rutaAudioCambio), name: AVAudioSession.routeChangeNotification, object: nil)
+    NotificationCenter.default.addObserver(self, selector: #selector(engineConfigCambio), name: .AVAudioEngineConfigurationChange, object: nil)
     SFSpeechRecognizer.requestAuthorization { [weak self] status in
       guard status == .authorized else { return }
       DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self?.iniciarEscuchaBID() }
@@ -199,7 +200,23 @@ func resetearEngine() {
         }
     }
 }
-
+@objc private func engineConfigCambio(_ notification: Notification) {
+    URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=ENGINE-config-cambio")!).resume()
+    guard !pausadoPorSistema, !arrancando else { return }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        guard !self.pausadoPorSistema, !self.arrancando else { return }
+        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetoothHFP, .mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(true)
+        if let g = AVAudioSession.sharedInstance().availableInputs?.first(where: { $0.portType == .bluetoothHFP }) {
+            try? AVAudioSession.sharedInstance().setPreferredInput(g)
+        }
+        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+            appDelegate.silencioPlayer?.play()
+        }
+        self.audioEngine = AVAudioEngine()
+        self.iniciarEscuchaBID()
+    }
+}
   private func arrancarVigilante() {
     vigilanteTask?.cancel()
     ultimoResultado = Date()
@@ -564,7 +581,7 @@ class WearablesViewModel: ObservableObject {
       await withCheckedContinuation { continuation in
         var observador: NSObjectProtocol?
         var resumido = false
-        observador = NotificationCenter.default.addObserver(
+        observador = (
           forName: NSNotification.Name("BIDAudioTerminado"),
           object: nil,
           queue: .main
