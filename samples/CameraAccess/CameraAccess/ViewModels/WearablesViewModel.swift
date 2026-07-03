@@ -394,11 +394,11 @@ private func arrancarEngine() {
     URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=\(msg0)")!).resume()
     guard formato.sampleRate > 0 else { return }
     inputNode.removeTap(onBus: 0)
-    var primerBuffer = true
+    var contadorBuffers = 0
     inputNode.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
-        if primerBuffer {
-            primerBuffer = false
-            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=AUDIO-llegando")!).resume()
+        contadorBuffers += 1
+        if contadorBuffers == 1 || contadorBuffers % 150 == 0 {
+            URLSession.shared.dataTask(with: URL(string: "https://bidjuanmi.com/bid-log?msg=AUDIO-buffer-\(contadorBuffers)")!).resume()
         }
         self?.recognitionRequest?.append(buffer)
     }
